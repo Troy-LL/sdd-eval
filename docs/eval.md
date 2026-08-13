@@ -1,18 +1,20 @@
 # eval
 
-Pre-registered winner rule for trial 1 (dump vs allowlist+cap). Lived as Satan v0.5.1. W5 is unsigned until there is a log. Bebot signs W5 off the log. Bototoy does not.
+Pre-registered winner rule for trial 1 (dump vs allowlist+cap). Lived as Satan v0.5.3. Nobody signs W5 until there is a log. Bebot signs W5 off the log. Bototoy does not.
 
 Subject ≠ judge. Gold checker only. First reported run is the run. Pilots throwaway. Do not tune `AGENTS.md` against test tasks.
-
-`$call1` = all billed $ through the first scored answer, including tool-use roundtrips. Not the first HTTP request.
-
-KEEP $ = all-trials median `$call1` on the full paired n, both arms. Quality-only $ is reported, not KEEP. Cap-violators stay in KEEP $ as failures, not as quality-passers.
-
-If L1 violates the cap on a task, that task is not L1 `task_success`, even if the gold checker would pass.
 
 `$call2plus` is reported. It cannot KEEP and cannot un-KEEP. Cap-obey and `cites_ok` are reported diagnostics, not KEEP bars. `cites_ok` is primary cited path vs gold `expected_path`, both arms, never L1-vs-L0.
 
 ## W1 — cost
+
+`$call1` = billed $ through the first scored answer, including tool-use roundtrips. Not first HTTP.
+
+`$call1` KEEP is median over the full paired n, both arms. Quality gates stay separate. Violator bills stay in the $ pool as failures, not as quality-passers. Quality-only $ may be reported.
+
+KEEP $ = all-trials median `$call1`. Quality-only $ is reported, not the KEEP bar.
+
+L1 cap violation ⇒ `task_success` false even if the gold checker would pass. That is the L1 treatment, not a deleted bill. KEEP $ stays all-trials median `$call1`. Violators remain in the $ pool as failures.
 
 L1 all-trials median `$call1` strictly < L0 all-trials median `$call1` (same tasks, same model).
 
