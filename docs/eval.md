@@ -1,6 +1,6 @@
 # eval
 
-Pre-registered winner rule for trial 1 (dump vs allowlist+cap). Lived as Satan v0.5.1. Nobody signs W5 until there is a log. Bebot signs W5 off the log. Bototoy does not.
+Pre-registered winner rule for trial 1 (dump vs allowlist+cap). Lived as Satan v0.5.2. Nobody signs W5 until there is a log. Bebot signs W5 off the log. Bototoy does not.
 
 Subject ≠ judge. Gold checker only. First reported run is the run. Pilots throwaway. Do not tune `AGENTS.md` against test tasks.
 
@@ -14,7 +14,7 @@ Subject ≠ judge. Gold checker only. First reported run is the run. Pilots thro
 
 KEEP $ = all-trials median `$call1`. Quality-only $ is reported, not the KEEP bar.
 
-Cap violation ⇒ that task is not L1 `task_success`. Violators stay in KEEP $ as failures.
+L1 cap violation ⇒ `task_success` false even if the gold checker would pass. That is the L1 treatment, not a deleted bill. KEEP $ stays all-trials median `$call1`. Violators remain in the $ pool as failures.
 
 L1 all-trials median `$call1` strictly < L0 all-trials median `$call1` (same tasks, same model).
 
