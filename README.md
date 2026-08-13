@@ -1,28 +1,36 @@
 # sdd-eval
 
-Eval harness for project docs layouts. Not a spec framework.
+Which project-docs layout wins on **billed tokens × task success × cite-accuracy** for SDD tasks?
 
-## Problem
+Not a spec framework. Not a template shop. Cursor-Maxxing and Troysetup already encode a cookbook. This repo exists to falsify it.
 
-Agents dump `docs/`, compact it into a second document, or dual-write YAML next to prose. We froze a cookbook (allowlist + load cap) and shipped it into Cursor-Maxxing `/bootstrap` and Troysetup `AGENTS.md`. We have not measured whether it is better.
+## Treatments (same information, different layout)
 
-This repo exists to kill or keep that cookbook with numbers.
+Fixtures, not docs:
 
-## What this is not
+- `fixtures/dump`
+- `fixtures/allowlist`
+- `fixtures/compact`
+- `fixtures/yaml`
 
-- A 12-file docs kit
-- A second EditLayer SPEC pile
-- GraphRAG, image-SDDs, or Clojure-dense schemas
-- A `cookbook.md` you copy into every project
+Same corpus across dump vs allowlist. If writing quality differs, the eval is confounded. Corpus must change between turns or cache-bust is fake.
 
-## What we will measure (draft, under attack)
+## What this repo may contain
 
-Layouts: dump `docs/` vs allowlist+load-cap vs compaction vs YAML dual-write.
+- `README.md` — this question
+- `AGENTS.md` — map only, no Toktok essay
+- `docs/eval.md` — winner rule, **before** run 1
+- `prompts/` / `evals/` — treatments and logs, not docs
 
-Per trial: files loaded (path, hash, order), billed buckets (`cache_creation` / `cache_read` / uncached / output), task success, whether the agent cited the right file.
+No `SPEC.md`, `ARCHITECTURE.md`, `DESIGN.md`, `BEST_PRACTICES.md`, `COOKBOOK.md`, no ADR that names a winner before numbers. No `architecture.md` of the philosophy. The harness code is the architecture.
 
-If the cookbook loses, we change it. If dump wins, we say so.
+## Rules that stop us cheating
 
-## Repo rule
+- Winner rule pre-registered. Cheap and wrong loses.
+- First reported run is the run. Pilots are throwaway.
+- Do not tune `AGENTS.md` against the test tasks.
+- Do not use the same model as subject and judge.
+- If allowlist wins every axis, the eval is probably rigged.
+- Dump may win success. Compaction may win tokens on a static corpus. Say so.
 
-This repo follows its own allowlist. Right now that is this README. `docs/eval.md` lands after the eval protocol survives Satan. No other doc types.
+`docs/eval.md` is not written yet. It lands when the protocol survives the rest of the team.
