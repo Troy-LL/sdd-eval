@@ -6,6 +6,8 @@ Not a spec framework. Not a template shop. Cursor-Maxxing and Troysetup already 
 
 Trial 1 is dump vs allowlist+cap only. Same information. Dump extras appended after a shared prefix. Corpus must change between turns or cache-bust is fake.
 
+Winner rule: [`docs/eval.md`](docs/eval.md). Pre-registered. W5 unsigned until there is a log.
+
 ## What this repo may contain
 
 - `README.md` — this question
@@ -23,5 +25,3 @@ No `SPEC.md`, `ARCHITECTURE.md`, `DESIGN.md`, `BEST_PRACTICES.md`, `COOKBOOK.md`
 - Do not use the same model as subject and judge.
 - If allowlist wins every axis, the eval is probably rigged.
 - Dump may win success. Say so.
-
-`docs/eval.md` is not written yet. It lands when the protocol survives Satan.
