@@ -1,8 +1,8 @@
 # sdd-eval
 
-Does **allowlist + load cap** beat **dump docs/** on billed tokens × task success × cite-accuracy?
+Does **allowlist + load cap** beat **dump docs/** on billed tokens × task success?
 
-Not a spec framework. Not a template shop. Cursor-Maxxing and Troysetup already encode a cookbook. This repo exists to kill or keep that bet on one real spec SHA.
+Not a spec framework. Not a template shop. Cursor-Maxxing and Troysetup already encode a cookbook. This repo exists to test that bet on one real spec SHA.
 
 Trial 1 is dump vs allowlist+cap only. Same information. Dump extras appended after a shared prefix. Corpus must change between turns or cache-bust is fake.
 
