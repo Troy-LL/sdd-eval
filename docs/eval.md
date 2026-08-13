@@ -1,6 +1,6 @@
 # eval
 
-Pre-registered winner rule for trial 1 (dump vs allowlist+cap). Lived as Satan v0.5.2. Nobody signs W5 until there is a log. Bebot signs W5 off the log. Bototoy does not.
+Pre-registered winner rule for trial 1 (dump vs allowlist+cap). Lived as Satan v0.5.3. Nobody signs W5 until there is a log. Bebot signs W5 off the log. Bototoy does not.
 
 Subject ≠ judge. Gold checker only. First reported run is the run. Pilots throwaway. Do not tune `AGENTS.md` against test tasks.
 
