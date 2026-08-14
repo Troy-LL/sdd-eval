@@ -22,6 +22,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const FIXTURE = path.join(ROOT, "fixtures", "product");
 const TASKS_PATH = path.join(ROOT, "sdd-eval-tasks.yaml");
 const EVAL_MD = path.join(ROOT, "docs", "eval.md");
+const README = path.join(ROOT, "README.md");
 
 const MAP_NAMED = [
   "README.md",
@@ -106,7 +107,7 @@ async function readFixture(rel: string): Promise<string> {
   return readFile(path.join(FIXTURE, rel), "utf8");
 }
 
-export async function check(opts?: { tasksRaw?: string; evalMd?: string }): Promise<{
+export async function check(opts?: { tasksRaw?: string; evalMd?: string; readme?: string }): Promise<{
   n: number;
   prefixGold: number;
   missingSlice: number;
@@ -114,6 +115,7 @@ export async function check(opts?: { tasksRaw?: string; evalMd?: string }): Prom
 }> {
   const tasksRaw = opts?.tasksRaw ?? (await readFile(TASKS_PATH, "utf8"));
   const evalMd = opts?.evalMd ?? (await readFile(EVAL_MD, "utf8"));
+  const readme = opts?.readme ?? (await readFile(README, "utf8"));
   const tasks = loadTasks(tasksRaw);
   const sha256 = sha256File(new TextEncoder().encode(tasksRaw));
 
@@ -164,14 +166,22 @@ export async function check(opts?: { tasksRaw?: string; evalMd?: string }): Prom
     }
   }
 
-  const pin = evalMd.match(/sdd-eval-tasks\.yaml` SHA-256 `([0-9a-f]{64})`/);
-  if (!pin) throw new Error("docs/eval.md missing tasks SHA-256 pin");
-  if (pin[1] !== sha256) throw new Error(`tasks hash pin ${pin[1]} != ${sha256}`);
-  if (/767a4266|e726f48/.test(evalMd)) throw new Error("docs/eval.md still pins dead EditLayer hashes");
-  if (!/microbench/i.test(evalMd) || !/cannot KEEP the cookbook/i.test(evalMd)) {
-    throw new Error("docs/eval.md must pre-register microbench / cannot KEEP the cookbook");
-  }
+  if (/cratewake/i.test(evalMd)) throw new Error("docs/eval.md must not name cratewake");
+  if (evalMd.includes(sha256)) throw new Error("docs/eval.md must not pin the microbench tasks hash");
+  if (/fixtures\/product/i.test(evalMd)) throw new Error("docs/eval.md must not pin the microbench fixture");
+  if (/microbench/i.test(evalMd)) throw new Error("docs/eval.md is the KEEP rule, not the microbench");
   if (/trial 1 KEEP/i.test(evalMd)) throw new Error("do not write trial 1 KEEP");
+  if (!/no KEEP subject/.test(evalMd)) throw new Error("docs/eval.md subject pin must be no KEEP subject");
+  if (!/\$call1.*=.*billed \$ through the first scored answer/s.test(evalMd)) {
+    throw new Error("docs/eval.md lost the $call1 KEEP definition");
+  }
+  if (!/n_missing ≥ 10, or ≥ 25% of n/.test(evalMd) || !/Prefix-gold n ≥ 40 paired/.test(evalMd)) {
+    throw new Error("docs/eval.md lost W2 n bars");
+  }
+  if (!/## W3 — cites vs gold/.test(evalMd)) throw new Error("docs/eval.md lost W3");
+  if (!/microbench/i.test(readme)) throw new Error("README must label this checkout a microbench");
+  if (!readme.includes(sha256)) throw new Error("README must carry the microbench tasks hash (not a KEEP pin)");
+  if (/trial 1 KEEP/i.test(readme)) throw new Error("do not write trial 1 KEEP");
 
   return { n, prefixGold: prefixGold.length, missingSlice: missingSlice.length, sha256 };
 }

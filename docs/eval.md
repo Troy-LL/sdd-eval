@@ -1,10 +1,6 @@
 # eval
 
-This pin is a **microbench**. A self-authored fixture cannot KEEP the cookbook. The cookbook remains untested for KEEP on real products. This is not a KEEP trial. Do not generalize to Troy-LL apps.
-
-W1–W4 bars below are unchanged. W5 still applies: if L1 sweeps dump-winnable axes, the result is cannot distinguish, not KEEP.
-
-Lived as Satan v0.5.3. Nobody signs W5 until there is a log. Bebot signs W5 off the log. Bototoy does not.
+Pre-registered winner rule for trial 1 (dump vs allowlist+cap). Lived as Satan v0.5.3. Nobody signs W5 until there is a log. Bebot signs W5 off the log. Bototoy does not.
 
 Subject ≠ judge. Gold checker only. First reported run is the run. Pilots throwaway. Do not tune `AGENTS.md` against test tasks.
 
@@ -50,11 +46,8 @@ Passed audit does not waive this. Dump-winnable axes: missing-slice `task_succes
 - L1 ties missing-slice and is cheaper → not KEEP. Report cheaper.
 - L1 loses missing-slice and is cheaper → TRADE. Not a yes to beat dump on tokens × success.
 
-On this microbench pin, even a clean W1–W4 log still cannot KEEP the cookbook. The subject is self-authored. Real products remain untested.
-
 ## Pins
 
-- Tasks hash (before run 1): `sdd-eval-tasks.yaml` SHA-256 `030349642c36cf2e3f0b1827a61499c835cf5c1caac39c8f8aa7e6d4beaf61eb`. Re-hash after a pilot is invalid.
-- Subject: `fixtures/product/` in this repo (cratewake). Self-authored microbench fixture. Not EditLayer, PhotoSocial, washere. Cannot KEEP the cookbook.
-- Prefix-bust pair: none in this pin. `$call2plus` cannot KEEP.
-- Label: microbench, not KEEP.
+- Tasks hash (before run 1): none. No KEEP run is pinned.
+- Subject: no KEEP subject.
+- Prefix-bust pair: none. Unverified pair ⇒ no KEEP on `$call2plus`.

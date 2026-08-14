@@ -7,7 +7,7 @@ import { check, loadTasks } from "./run.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("fixture + tasks meet W2 n bars and stay a microbench", async () => {
+test("fixture + tasks meet n floors; prefix-gold 40 is by construction", async () => {
   const r = await check();
   assert.equal(r.prefixGold, 40);
   assert.equal(r.missingSlice, 14);
@@ -25,15 +25,21 @@ test("tasks yaml has no stored diagnoses and no extra treatments", async () => {
   assert.equal(tasks.every((t) => t.stratum === "prefix-gold" || t.stratum === "missing-slice"), true);
 });
 
-test("research eval.md keeps W1-W4 bars and drops EditLayer pins", async () => {
+test("docs/eval.md stays the KEEP rule; cratewake is not the subject", async () => {
   const evalMd = await readFile(path.join(ROOT, "docs", "eval.md"), "utf8");
+  const readme = await readFile(path.join(ROOT, "README.md"), "utf8");
   assert.match(evalMd, /\$call1.*=.*billed \$ through the first scored answer/s);
   assert.match(evalMd, /n_missing ≥ 10, or ≥ 25% of n/);
   assert.match(evalMd, /Prefix-gold n ≥ 40 paired/);
-  assert.doesNotMatch(evalMd, /767a4266/);
-  assert.doesNotMatch(evalMd, /e726f48/);
+  assert.match(evalMd, /## W3 — cites vs gold/);
+  assert.match(evalMd, /no KEEP subject/);
+  assert.doesNotMatch(evalMd, /cratewake/i);
+  assert.doesNotMatch(evalMd, /03034964/);
+  assert.doesNotMatch(evalMd, /fixtures\/product/);
+  assert.doesNotMatch(evalMd, /microbench/i);
   assert.doesNotMatch(evalMd, /trial 1 KEEP/i);
   assert.doesNotMatch(evalMd, /KEEP trial 1/i);
-  assert.match(evalMd, /cannot KEEP the cookbook/);
-  assert.match(evalMd, /microbench/i);
+  assert.match(readme, /microbench/i);
+  assert.match(readme, /by construction/);
+  assert.doesNotMatch(readme, /trial 1 KEEP/i);
 });
