@@ -10,6 +10,11 @@ const DOCS = [
   "docs/files.md",
   "docs/decisions/001-intent-in-the-file-that-changed.md",
   "references/sources.md",
+  ".cursor/skills/sdd/SKILL.md",
+  ".cursor/skills/sdd/occasion.md",
+  ".cursor/skills/sdd/promote.md",
+  ".cursor/skills/sdd/map.md",
+  ".cursor/skills/sdd/owners.md",
 ] as const;
 
 const issues = await lintDocs({ root: ROOT, map: "AGENTS.md", docs: DOCS });

@@ -28,6 +28,8 @@ Intent before code stays. A per-feature `spec.md` / `plan.md` / `tasks.md` tree 
 
 What belongs in each file: [`docs/files.md`](docs/files.md). How authoring and load fit together: [`docs/architecture.md`](docs/architecture.md). Primary sources: [`references/sources.md`](references/sources.md).
 
+Agents run the ladder through [`/sdd`](.cursor/skills/sdd/SKILL.md). Load stays on the product `AGENTS.md`.
+
 ## Run this repo
 
 ```bash
