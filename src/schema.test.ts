@@ -16,7 +16,7 @@ import {
   type Observation,
   type Task,
 } from "./schema.ts";
-import { observationLine } from "./run.ts";
+import { derive, observationLine } from "./run.ts";
 
 const allowlist = new Set([
   "AGENTS.md",
@@ -176,6 +176,45 @@ test("OpenAI cached_tokens never maps into Anthropic cache_creation", () => {
 test("missingSliceFloor is max(10, 25% of n)", () => {
   assert.equal(missingSliceFloor(40), 10);
   assert.equal(missingSliceFloor(80), 20);
+});
+
+test("env MODEL/OPENAI_MODEL cannot price unknown or empty obs.model", () => {
+  const prevOpenAI = process.env.OPENAI_MODEL;
+  const prevModel = process.env.MODEL;
+  process.env.OPENAI_MODEL = "gpt-4o-mini";
+  process.env.MODEL = "gpt-4o-mini";
+  const usage = { prompt_tokens: 1000, completion_tokens: 200, cached_tokens: 0 };
+  try {
+    for (const model of ["", "   ", "not-a-real-model"]) {
+      const d = derive(obs({ model, usage }), task, process.env.OPENAI_MODEL);
+      assert.equal(d.call1_dollars, null);
+    }
+  } finally {
+    if (prevOpenAI === undefined) delete process.env.OPENAI_MODEL;
+    else process.env.OPENAI_MODEL = prevOpenAI;
+    if (prevModel === undefined) delete process.env.MODEL;
+    else process.env.MODEL = prevModel;
+  }
+});
+
+test("known obs.model still prices when env MODEL/OPENAI_MODEL disagree", () => {
+  const prevOpenAI = process.env.OPENAI_MODEL;
+  const prevModel = process.env.MODEL;
+  process.env.OPENAI_MODEL = "unknown-env-model";
+  process.env.MODEL = "unknown-env-model";
+  const usage = { prompt_tokens: 1000, completion_tokens: 200, cached_tokens: 0 };
+  try {
+    const d = derive(obs({ model: "gpt-4o-mini", usage }), task, process.env.OPENAI_MODEL);
+    assert.equal(
+      d.call1_dollars,
+      1000 * GPT_4O_MINI_INPUT_PER_TOKEN + 200 * GPT_4O_MINI_OUTPUT_PER_TOKEN,
+    );
+  } finally {
+    if (prevOpenAI === undefined) delete process.env.OPENAI_MODEL;
+    else process.env.OPENAI_MODEL = prevOpenAI;
+    if (prevModel === undefined) delete process.env.MODEL;
+    else process.env.MODEL = prevModel;
+  }
 });
 
 test("serialized observation includes model", () => {

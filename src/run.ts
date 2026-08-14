@@ -566,20 +566,23 @@ export function observationLine(obs: Observation): Record<string, unknown> {
   };
 }
 
-function derive(obs: Observation, task: Task, model: string): {
+/** $call1 keys rates off obs.model. envModel / process.env are ignored. Unknown model → null. */
+export function derive(obs: Observation, task: Task, envModel?: string): {
   cap_obey: boolean;
   cites_ok: boolean;
   gold_ok: boolean;
   task_success: boolean;
   call1_dollars: number | null;
 } {
+  void envModel;
+  const modelId = typeof obs.model === "string" ? obs.model.trim() : "";
   let dollars: number | null = null;
-  if (obs.usage) {
-    if (isOpenAIUsage(obs.usage)) {
-      const rates = OPENAI_RATES[model];
+  if (obs.usage && modelId) {
+    if (obs.provider === "openai" && isOpenAIUsage(obs.usage)) {
+      const rates = OPENAI_RATES[modelId];
       dollars = rates ? call1_dollars(obs.usage, rates) : null;
-    } else {
-      const rates = RATES[model];
+    } else if (obs.provider === "anthropic" && !isOpenAIUsage(obs.usage)) {
+      const rates = RATES[modelId];
       dollars = rates ? call1_dollars(obs.usage, rates) : null;
     }
   }
