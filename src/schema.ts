@@ -1,5 +1,5 @@
 export type Stratum = "prefix-gold" | "missing-slice";
-export type Arm = "L0" | "L1";
+export type Arm = "L0" | "L1" | "mechanical-cap";
 
 export type Task = {
   id: string;
@@ -36,6 +36,8 @@ export type Observation = {
   usage: UsageBuckets | OpenAIUsageBuckets | null;
   model: string;
   provider: Provider;
+  /** Paths requested after extraCap and not served. Not a KEEP field. */
+  refused_paths: string[];
 };
 
 export type Rates = {
@@ -87,6 +89,11 @@ export function bucketsFromOpenAI(usage: Record<string, unknown> | undefined): O
 
 export function extraFileCap(evalInPlay: boolean): number {
   return evalInPlay ? 3 : 2;
+}
+
+/** Derived. Not stored on JSONL. Not a KEEP field. */
+export function refuse_count(obs: Observation): number {
+  return obs.refused_paths.length;
 }
 
 export function gold_ok(answer: string | null, gold: string): boolean {

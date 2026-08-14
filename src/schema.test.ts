@@ -7,6 +7,7 @@ import {
   cites_ok,
   extraFileCap,
   gold_ok,
+  refuse_count,
   GPT_4O_MINI_CACHED_INPUT_PER_TOKEN,
   GPT_4O_MINI_INPUT_PER_TOKEN,
   GPT_4O_MINI_OUTPUT_PER_TOKEN,
@@ -46,6 +47,7 @@ function obs(partial: Partial<Observation>): Observation {
     usage: null,
     model: "gpt-4o-mini",
     provider: "openai",
+    refused_paths: [],
     ...partial,
   };
 }
@@ -217,17 +219,26 @@ test("known obs.model still prices when env MODEL/OPENAI_MODEL disagree", () => 
   }
 });
 
-test("serialized observation includes model", () => {
+test("serialized observation includes model and refused_paths, not refuse_count", () => {
   const line = observationLine(
     obs({
       model: "gpt-4o-mini",
       provider: "openai",
       usage: { prompt_tokens: 10, completion_tokens: 2, cached_tokens: 0 },
+      refused_paths: ["docs/eval.md"],
     }),
   );
-  const parsed = JSON.parse(JSON.stringify(line)) as { model?: unknown; provider?: unknown; usage?: object };
+  const parsed = JSON.parse(JSON.stringify(line)) as {
+    model?: unknown;
+    provider?: unknown;
+    usage?: object;
+    refused_paths?: unknown;
+  };
   assert.equal(typeof parsed.model, "string");
   assert.equal(parsed.model, "gpt-4o-mini");
   assert.equal(parsed.provider, "openai");
+  assert.deepEqual(parsed.refused_paths, ["docs/eval.md"]);
+  assert.equal("refuse_count" in line, false);
   assert.equal(parsed.usage && "cache_creation_input_tokens" in parsed.usage, false);
+  assert.equal(refuse_count(obs({ refused_paths: ["docs/eval.md"] })), 1);
 });

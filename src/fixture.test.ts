@@ -19,6 +19,7 @@ test("tasks yaml has no stored diagnoses and no extra treatments", async () => {
   assert.equal(raw.includes("cap_obey"), false);
   assert.equal(raw.includes("cites_ok"), false);
   assert.equal(raw.includes("task_success"), false);
+  assert.equal(raw.includes("refuse_count"), false);
   assert.equal(raw.includes("compact"), false);
   const tasks = loadTasks(raw);
   assert.equal(tasks.every((t) => t.stratum === "prefix-gold" || t.stratum === "missing-slice"), true);
@@ -38,6 +39,8 @@ test("docs/eval.md stays the KEEP rule and does not mention cratewake/03034964/f
   assert.doesNotMatch(evalMd, /microbench/i);
   assert.doesNotMatch(evalMd, /trial 1 KEEP/i);
   assert.doesNotMatch(evalMd, /KEEP trial 1/i);
+  assert.doesNotMatch(evalMd, /mechanical-cap/i);
+  assert.doesNotMatch(evalMd, /L1-gated/i);
 });
 
 test("README has OpenAI run line and stays a microbench, not KEEP", async () => {
@@ -45,4 +48,9 @@ test("README has OpenAI run line and stays a microbench, not KEEP", async () => 
   assert.match(readme, /OPENAI_API_KEY/);
   assert.match(readme, /microbench/i);
   assert.doesNotMatch(readme, /trial 1 KEEP/i);
+  assert.match(readme, /harness enforcement log/);
+  assert.match(readme, /not allowlist\+cap/);
+  assert.doesNotMatch(readme, /L1-gated/i);
+  assert.doesNotMatch(readme, /same L1/);
+  assert.doesNotMatch(readme, /mechanical-cap is allowlist\+cap/);
 });
