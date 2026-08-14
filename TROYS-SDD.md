@@ -1,268 +1,236 @@
 # Troy's SDD
 
-Troy's SDD is a way to write product docs that both a human and a coding agent can use without dumping the whole `docs/` folder into every turn.
+A guide to the `docs/` tree (and the two files next to it) so a human can skim it and a coding agent can open one file per turn instead of eating the whole folder.
 
-This file is the handbook. Read it top to bottom and the names, rules, and numbers should make sense without another document. The git repo that holds this file is still called `sdd-eval`. That name is the microbench harness. Troy's SDD is the method.
-
-It is not GitHub Spec Kit. It is not OpenSpec. It is not Kiro. It is not a KEEP winner. KEEP is defined below.
-
-## How to read this file
-
-1. [Names](#names) — every label we use, in plain language.
-2. [Rules](#rules) — what you put in a product repo and how an agent loads it.
-3. [Findings](#findings) — what we measured, with the percentage attached to the name.
-4. [Steal and veto](#steal-and-veto) — what we took from other cookbooks and what we refused.
-5. [This checkout](#this-checkout) — what each path in `sdd-eval` is for.
-
-Product repos get the allowlisted files in [Rules](#rules). They do not get a copy of this handbook, `COOKBOOK.md`, `SPEC.md`, or `BEST_PRACTICES.md`.
+Do not copy this file into a product repo. Put the files below in the product. This page is how to write them.
 
 ---
 
-## Names
+## 1. Start with the smallest tree that is true
 
-### Troy's SDD
+Do not create empty docs for a future you do not have.
 
-Spec-driven development as we practice it: a small **allowlist** of living Markdown files, plus a **load cap** per agent turn. Intent before code. Not a new `spec.md` / `plan.md` / `tasks.md` for every feature.
+| If the repo is… | Create |
+| --- | --- |
+| Scratch, classwork, a spike | `README.md` only. No `docs/` yet |
+| A product people run | `README.md`, `AGENTS.md`, `docs/architecture.md`. Add `docs/design.md` only if there is a screen |
+| A product with a model in the loop | All of the above plus `docs/eval.md` |
+| A product that made a real decision | Add one file under `docs/decisions/` when that decision ships |
 
-### Allowlist
+That is the **ladder**. It is an authoring rule (what to create), not a load rule (what to open this turn). Do not write the ladder into `AGENTS.md` or the agent will open extra files because they exist.
 
-The only product-doc filenames we will load on purpose:
+A weekend script is `README.md` and nothing else. That is still Troy's SDD. You just have not climbed the ladder.
 
-| File | Job | Skip when |
+---
+
+## 2. The folder
+
+This is the whole tree. If a name is not here, it does not belong in `docs/`.
+
+```
+.
+├── README.md                 humans: what it is, how to run
+├── AGENTS.md                 agents: map of the files below, not a second spec
+├── docs/
+│   ├── architecture.md       how it works. points at schema. no column dump
+│   ├── design.md             how it looks. omit if there is no screen
+│   ├── eval.md               how we know it works. omit if no model
+│   └── decisions/
+│       └── 001-short-title.md   one decision. cite it. never glob this folder
+├── src/                      code, including schema files architecture points at
+├── hooks/keep-inside-root.mjs  deny writes and shell that leave this root
+├── .cursor/hooks.json        Cursor: preToolUse + beforeShellExecution
+├── .claude/settings.json     Claude Code: PreToolUse on Write/Edit/Bash
+├── prompts/                  prompt text as code, not docs
+└── evals/                    runs and reports as code, not docs
+    └── reports/              dated writeups live here, not under docs/
+```
+
+Root `README.md` and `AGENTS.md` sit next to `docs/`, not inside it. `docs/` is the product spec. The map is one level up so every agent that looks for `AGENTS.md` finds it.
+
+### Do not add
+
+| Tempting file | Why not |
+| --- | --- |
+| `docs/README.md` | Second index. The map is `AGENTS.md` |
+| `spec.md`, `plan.md`, `tasks.md` per feature | Spec Kit / Kiro bloat. Intent lives in the allowlisted file that changed, plus one ADR if it was a decision |
+| `openspec/specs/` | Second source of truth |
+| `docs/api.md`, `docs/data-model.md` | Schema lives in code. Architecture points at it |
+| `docs/ai-architecture.md` | That is architecture, or eval |
+| `tutorials/`, `how-to/`, `reference/` | Diátaxis needs can live *inside* the files above. Do not make four folder trees |
+| `llms.txt` next to `AGENTS.md` | Second map |
+| `llms-full.txt` | Dump |
+| `CLAUDE.md` / `.cursorrules` that copy `AGENTS.md` | Dual-write. Point those files at `AGENTS.md` if a tool requires them |
+| `docs/changelog.md` as the spec | Changelog is not how the product works |
+| `COOKBOOK.md`, `BEST_PRACTICES.md`, this handbook | Process law stays out of the product |
+
+---
+
+## 3. Write each file for one job
+
+Put a short identity line under the `#` title: what this file is. Then the facts that belong here and nowhere else. Stable content first, volatile later (cache). Do not repeat the same gold token in two files.
+
+Before writing prose, check whether the fact can execute instead. Priority: **test > eval > schema-in-code > prose**. A gold command with an expected output is a spec that cannot rot silently; a paragraph describing the same behaviour can. `docs/` stays small because it holds only the non-executable residue — topology, rationale, UI behaviour.
+
+| File | Holds | Never |
 | --- | --- | --- |
-| `README.md` | What it is, who it is for, how to run | Never on scratch work |
-| `AGENTS.md` | Thin **map**: commands, do-nots, pointers. No architecture pasted in | Never if agents work in the repo |
-| `docs/architecture.md` | How it works. Points at the schema file. Does not recap columns | No shipping system yet |
-| `docs/design.md` | Human look and feel | No screen |
-| `docs/eval.md` | How we know it works | No model in the loop |
-| `docs/decisions/NNN-title.md` | One **ADR** when you cite it | No decision yet |
+| `README.md` | What it is, who for, run (install, command, config path, port, health), limits operators hit. Exact strings, not paraphrases | Process topology, UI tokens, SLOs |
+| `AGENTS.md` | One bullet per file that exists, plus the load rule. See below | Architecture pasted in, limits copied from README, a job table of verbs that restates README |
+| `docs/architecture.md` | Data flow, processes, sockets, replicas, one line pointing at the schema file in code | Field recaps. List columns and you just invented `data-model.md` |
+| `docs/design.md` | Operator or user UI: poll, badges, empty copy, keyboard, retry, backoff, focus | Schema recap. Skip the file entirely on a headless service |
+| `docs/eval.md` | Gold command and where it writes, SLOs, scrape, metric prefix, alert files | A winner-rule essay. Omit the file if no model or scored probe |
+| `docs/decisions/NNN-title.md` | One decision: Status, Context, Decision, Consequences | A changelog, a second architecture, or a folder you glob |
 
-`prompts/` and `evals/` may exist as code. They are not on the map. Dated reports go under `evals/reports/`, not `docs/`.
+`AGENTS.md` is the one worth copying verbatim, because the load rule lives in it:
 
-### Map
+```markdown
+# <product>
 
-`AGENTS.md`. An index of paths, not a second spec. The agent reads the map first, then opens one of the files above. Same idea as [agents.md](https://agents.md/) and Karpathy's index-then-drill, not a paste of five files.
+Map only.
 
-### Load cap (ceiling, not quota)
+- `README.md` — run, limits, paths, commands
+- `docs/architecture.md` — process, sockets, replicas, schema path
+- `docs/design.md` — operator UI
+- `docs/eval.md` — SLOs, scrape, gold command
 
-Per turn: `AGENTS.md`, then **at most 2** other allowlisted files, or **3** if `docs/eval.md` exists. One extra file is enough. Skip unused. Do not spend leftover slots.
+Load this file + at most 2, or + 3 if this turn needs eval.md.
+One extra file is enough. Skip unused.
+Pin order only when loading more than one: README → architecture → design → eval.
+Cite paths. Do not paste.
+```
 
-Pin order **only when loading more than one**: README, then architecture, then design, then eval. An ADR counts as one of those slots.
+Drop any bullet whose file does not exist. In a monorepo a nested `AGENTS.md` in a package is fine (nearest file wins); do not stack three maps that copy each other.
 
-### Ladder (authoring, not load)
+**ADRs.** [Nygard](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions) shape, one decision per file, `001-preempt-lease.md` then `002-…`. Mark `superseded-by 002-…` when you reverse it. Write it when the decision ships. Do not recap it inside architecture.
 
-Which files to *create*. Not which files to *open this turn*. Do not put the ladder inside `AGENTS.md` or the agent will spend the third slot because eval exists.
+Naming an ADR on the map is a routing decision, not an archival one. History can stay silent, and silent decisions are still real — dump-style reads find them, capped reads do not.
 
-| Kind | Create |
+**An ADR gets a map line if and only if violating it would produce a plausible-looking wrong change.** `001-preempt-lease` changes runtime behaviour, so an agent that has not read it will write something that looks fine and is wrong: map it. "We picked pnpm over npm" cannot be violated by accident in a way that survives review: leave it silent, grep finds it when someone needs it.
+
+**One special case.** In *this* git repo, `docs/eval.md` is the KEEP winner rule for a future real-product trial. Your product's `docs/eval.md` is the product probe, not that file.
+
+---
+
+## 4. How an agent should use this tree
+
+The tree only works if the agent does not dump it.
+
+1. Read `AGENTS.md`.
+2. Open the one or two files the job needs. At most two extras, or three if this turn actually needs `eval.md`.
+3. That cap is a **ceiling, not a quota**. One extra file is enough. Do not open architecture to fill a slot.
+4. If you already know you need two, open them in pin order: README, architecture, design, eval. An ADR counts as one slot.
+5. Cite the path. Do not paste the spec into chat. Do not summarize architecture into the map.
+
+That is **just-in-time** load ([Anthropic](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents), [Karpathy index-then-drill](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)). The map holds paths. The Read tool holds the page.
+
+Three fixes that look right and lose on the bench (numbers in section 8):
+
+- **Forcing "exactly one extra file."** Sends a listen-port question to architecture.
+- **Job headers on the map** to help routing. The agent still opens a leftover file.
+- **Putting the load rule in a Read hook.** A hook can refuse a fourth file. It cannot teach which file to open, and it cannot find a silent ADR.
+
+---
+
+## 5. Hooks
+
+**Hooks enforce invariants. Docs teach judgment. Never swap them.** A hook is a deterministic gate. It can say no to a fourth file or an out-of-root write, but it cannot say which file was right, and on our bench the deny made answers worse because the agent routed around the gate instead of learning from it.
+
+| Hook-worthy | Never hook-worthy |
 | --- | --- |
-| Scratch / classwork | `README.md` only |
-| Product app | Add architecture and/or design when those things exist |
-| AI system | `eval.md` exists. Still do not dump `docs/` every turn |
+| Side-effect boundaries: writes and shell leaving the root | Load discipline and file routing |
+| Destructive commands, secrets in output | Style, tone, "read the map first" |
+| Format gates: commit message shape | Anything correct only in context the hook cannot see |
 
-### ADR
+The test is cost asymmetry: hook it when a false no is cheap and a missed yes is expensive, then fail closed. **Never gate reads.** Read gating breaks skills, SDKs, and `node_modules`, and buys nothing — a read has no blast radius.
 
-Architecture Decision Record ([Nygard](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)). One decision per file: context, decision, status, consequences. Mark `superseded-by NNN`. Cite one. Never glob `docs/decisions/`. Off the map until you want agents to find it on ordinary turns.
+### The write fence
 
-### KEEP / CHANGE / TRADE / VETO
+Docs discipline is not enough if the model writes to `C:\Users\…` or `cd ..`. Put the guard **in the product repo**, next to `AGENTS.md`, never as a global hook under `~/.cursor` or `~/.claude`.
 
-Council labels, not git keep.
+- **Writes** (`Write`, `Edit`, Cursor `preToolUse`): path must resolve inside the repo root.
+- **Shell** (Cursor `beforeShellExecution`, Claude `Bash`): `cd` / `Set-Location` and redirects (`>`, `Out-File`, `Set-Content`) must not land outside the root.
+- **Reads**: not gated.
 
-| Label | Means |
-| --- | --- |
-| KEEP | This rule stays |
-| CHANGE | The freeze changed after evidence |
-| TRADE | A real cost. Dump still wins unnamed facts |
-| VETO | Do not do this |
+It is not an OS sandbox, not network allowlisting, and not a substitute for the load cap. Copy these three into another product:
 
-**KEEP** in `docs/eval.md` is different. That file is the pre-registered winner rule for a future trial on a **real product**: billed `$call1` plus quality gates. This checkout has no KEEP subject. Cratewake cannot KEEP. Claude Code `cli_cost_usd` is not `$call1`.
+```
+hooks/keep-inside-root.mjs      the logic
+.cursor/hooks.json              adapter: preToolUse + beforeShellExecution
+.claude/settings.json           adapter: PreToolUse on Write/Edit/Bash
+```
 
-### `$call1` versus `cli_cost_usd`
+`.claude/settings.local.json` stays gitignored. Do not add these hooks to `fixtures/product/` — that fixture is an isolated copy for the bench. Cursor reloads `.cursor/hooks.json` on save; if a hook does not fire, open the Hooks output channel.
 
-| Name | What it is |
-| --- | --- |
-| `$call1` | Billed dollars through the first scored answer, from OpenAI or Anthropic usage buckets. The KEEP cost bar |
-| `cli_cost_usd` | Claude Code's client-side estimate. We quote it on cratewake. It cannot KEEP |
+**`hooks/docs-load.mjs` is not in that list.** It is a bench probe (L1h) that gates Reads against the allowlist and cap. Do not install it in a product, in the fixture, or on this checkout's live Read hooks — it would block reading the fixture's dump extras while you work on the harness.
 
-### Cratewake
+### Keeping hooks honest
 
-The planted-token fixture under `fixtures/product/`. A fake dock-bay lease clock. Self-authored. Exists to be measured. Not a shipping product. Not a KEEP subject. Do not retune `fixtures/product/AGENTS.md` against the test tasks.
+- **One script, N adapters.** Logic lives once; the per-tool files only wire events to it. Adding a third tool is config, not code.
+- **Hooks are code: test them.** Prove the bad case is denied *and* the good case is allowed. The allow-test is the one people skip, and it is how a hook silently breaks a workflow.
+- **Repo-local for product invariants, global only for personal ergonomics.** The fence travels with the repo so every teammate and every agent inherits it.
+- **Budget hooks like dependencies.** Each adds latency, a failure mode, and drift against the tool's hook API. Audit occasionally: a hook that never fires is either perfect or dead, and you should know which.
 
-### Strata (what kind of fact)
+---
 
-| Name | Meaning | Where the gold lives |
+## 6. Which layer does what
+
+Every negative result below is one layer doing another layer's job.
+
+| Layer | Job | Fails when asked to |
 | --- | --- | --- |
-| prefix-gold | Fact the map already points at | README, architecture, design, or eval |
-| missing-slice | Fact the map does not name | Only `docs/decisions/001-preempt-lease.md` |
+| `AGENTS.md` map | Routing and the load rule | Hold content (job headers: +31%, still dual-loads) |
+| `docs/` files | Non-executable knowledge, one fact each | Mirror code, or each other |
+| Hooks | Deterministic boundaries | Teach judgment (L1h) |
+| Tests and evals | Executable spec, regression floor | — this layer absorbs almost anything |
+| Bench | Measure the method, feed rules back here | Become the product |
 
-Gold is an **exact substring**. Citing the right file is `cites_ok`. Opening too many extras on the cap arm is a `cap_obey` fail. Those two are diagnostics. KEEP quality uses `task_success` (gold, and cap-obey on L1).
+The loop: bench measures → this handbook records the rule *with the number that justifies it* → map and hooks implement the mechanical subset → the docs lint keeps it from rotting between benches.
 
-### Arms and probes
+---
 
-Same fixture tree. Different load rule. Copy-only probes rewrite a temp checkout, never the committed fixture.
+## 7. Keep it from rotting
 
-| Name | What it does |
+**Bloat** is extra files and two copies of the same fact. **Rot** is the model's recall falling as you stuff more tokens in.
+
+- One fact, one file. If README has `max-bays 36`, architecture does not.
+- Point at schema. Do not copy the columns up.
+- Do not put a YAML twin next to the Markdown.
+- Do not compact the spec into a TL;DR on the map. Anthropic compact is for long *traces*, not for the product docs.
+- Scratch notes stay out of git. Dated reports stay under `evals/reports/`.
+- When a file's job dies (you remove the UI), delete `docs/design.md` and drop it from the map. Empty files are dump bait.
+
+Two of those fail mechanically, so do not leave them to discipline. `npm run lint:docs` (`src/docs-lint.ts`, copyable) fails CI when a **map bullet does not resolve** or a **markdown link is dead** — the dangling-map case you get the day you delete `design.md`. `npm run check` also asserts every gold token lives in **exactly one** file, which is the dual-fact case. Neither lints prose, and neither gates the agent: a lint on the docs is not a hook.
+
+---
+
+## 8. What the bench actually showed
+
+Spec Kit, OpenSpec, and Kiro all want intent before code. Keep that. They also emit `spec.md` / `plan.md` / `tasks.md` (or a parallel `openspec/specs/`) per change. That is a second spec, and it is what we are trying not to load.
+
+Everything below is a planted-token lookup bench (cratewake, Claude Code, throwaway, `cli_cost_usd` not `$call1`, **not a KEEP trial**). A self-authored fixture cannot KEEP the method.
+
+**Provenance: Claude Code 2.1.223, `claude-opus-5`, 2026-08-14.** These are properties of one model generation's retrieval-versus-context behaviour, not eternal truths. Long-context recall keeps improving, so the dump penalty may shrink and the cap's turn overhead may stop paying. **Re-bench on model change** and date the replacement. Keep every failed probe in this list: a graveyard with cost figures is what stops the next clever reader from re-proposing "exactly one extra file."
+
+- **Mapped facts:** dump **60%** exact gold = cap **60%**, right file **100%** both ways. Dumping extra docs did not help. Cap used **63% fewer files** and **5× more turns**, at **+3%** cost.
+- **Facts only on an unnamed ADR:** dump cited the file **100%**, cap **0%**, hunt cost **+99%**. Naming the ADR on a copy recovered **0% → 100%** gold and cut hunt cost **48%**. Do not retune a test fixture's map to cheat that.
+- **Cap is not a cost cut overall:** **+51%** across ten paired tasks. It is a bloat cut on mapped facts and a trade on silent decisions.
+- **"Exactly one extra file" (L1o):** gold **100% → 0%** on two tasks, **−40%** cost. Cheaper and wrong — pg-01 read architecture and answered `grpc 9104` instead of `7481/tcp`.
+- **Job-routed map (L1j):** still dual-loaded on every mapped fact, **+31%** cost on pg-01, and still missed the ADR.
+- **Read hook as a docs trainer (L1h): FALSE.** Four matched tasks against the prompt cap: cap_obey **3/4 → 4/4** (a fourth file was denied), prefix dual-load **2/2 → 0/2**, gold **2/4 → 1/4**, cost **+19%**, silent-ADR gold still **0**. The skip-unused reminder reproduced the L1o miss: `dock:lease` instead of `cratewake dock:lease`. Claude `--safe-mode` disables hooks; drop it without pinning the model and denying MCP tools and you measured a different subject.
+
+---
+
+## 9. Bench names
+
+This git checkout is `sdd-eval`. It measures the tree. It is not a product.
+
+| Name | Meaning |
 | --- | --- |
-| L0 | **Dump.** Prefix allowlist plus changelog, ops-noise, and the ADR, pasted, no tools |
-| L1 | **Cap.** `AGENTS.md` plus Read, at most 2 extras (3 if eval exists) |
-| L1n | Cheat-probe: copy of the map **names** the ADR. Not the cookbook |
-| L1o | Prompt: read **at most one** extra file. Not the cookbook |
-| L1j | Copy map rewritten as job headers. Not the cookbook |
+| L0 | Dump the allowlist plus extras, no tools |
+| L1 | Cap + Read |
+| L1o / L1j / L1n / L1h | Probes: force one extra file / job-routed map / map names the ADR / Read hook. None are product |
+| `$call1` | Billed $ from OpenAI or Anthropic buckets. KEEP cost bar |
+| `cli_cost_usd` | Claude Code estimate. We quoted it. It cannot KEEP |
+| KEEP (`docs/eval.md`) | Pre-registered winner rule for a *real* product. Cratewake cannot KEEP |
 
-Task ids: `pg-01` is prefix-gold row 1. `ms-02` is missing-slice row 2.
-
-### Context rot and bloat
-
-**Rot** (Anthropic): as tokens grow, recall falls. Attention is a finite budget. **Bloat** is extra files and dual-writes that spend that budget: `spec.md`/`plan.md`/`tasks.md` trees, `llms-full.txt`, a second `llms.txt` next to `AGENTS.md`, architecture pasted into the map, YAML that restates the prose.
-
----
-
-## Rules
-
-1. These filenames only. No `api.md`, `data-model.md`, `ai-architecture.md`, Diátaxis folder tree, or EditLayer shouting-case files.
-2. `architecture.md` points at the schema (types / JSON Schema). If it lists columns, that is `data-model.md` in disguise.
-3. `AGENTS.md` stays a map. Thin. No product or architecture text. No line-count to quote (200 was never measured).
-4. Load cap is a ceiling. Skip unused. Do not force exactly one extra file.
-5. Cite paths. Do not paste the spec. Do not compact it into a summary on the map.
-6. Do not dual-write YAML next to the same prose.
-7. One ADR when you cite it. Never glob. Off the map until named.
-8. Stable content above volatile inside each file (cache prefix). Scratch notes stay out of git.
-9. Do not ship this handbook inside a product repo.
-10. Do not retune a KEEP fixture's `AGENTS.md` against its test tasks.
-
-Per turn:
-
-```
-AGENTS.md
-+ at most 2 files
-+ 3 only if this turn needs eval.md
-```
-
----
-
-## Findings
-
-Throwaway Claude Code 2.1.223, model `claude-opus-5`, n=10 paired tasks (5 prefix-gold + 5 missing-slice) plus 8 follow-up calls. Gold is exact substring. Dollars below are `cli_cost_usd`, not `$call1`. Logs are gitignored under `evals/`.
-
-### Mapped facts (prefix-gold, n=5)
-
-Facts the map already named. Dump vs cap.
-
-| Metric | L0 dump | L1 cap | Read it as |
-| --- | --- | --- | --- |
-| Exact gold | 60% (3/5) | 60% (3/5) | Tied. Misses were shortened tokens (`36` vs `max-bays 36`), not the wrong file |
-| Right file cited | 100% | 100% | Writing README paid for itself |
-| Mean `cli_cost_usd` | $0.027 | $0.028 | Cap **+3%**. Not cheaper |
-| Files in context | 8 | 3 | Cap **63% fewer files** |
-| Turns | 1 | 5 | Cap **5× more turns** |
-
-Dumping changelog, ops-noise, and the ADR did not raise mapped-fact gold.
-
-### Unnamed decisions (missing-slice, n=5)
-
-Gold lives only on the silent ADR.
-
-| Metric | L0 dump | L1 cap | Read it as |
-| --- | --- | --- | --- |
-| Exact gold | 40% (2/5) | 0% | Dump wins. Cap never opened the ADR |
-| Right file cited | 100% | 0% | Silence is a TRADE |
-| Mean `cli_cost_usd` | $0.028 | $0.055 | Hunt **+99%** |
-
-### All 10 paired
-
-Cap **+51%** `cli_cost_usd` vs dump. Cap cheaper is **false** on this bench.
-
-### Follow-up probes (not the cookbook)
-
-| Probe | What we changed | Result | Cookbook? |
-| --- | --- | --- | --- |
-| L1n | Named the ADR on a **copy** of the map | Gold 0% → 100% on `ms-02` and `ms-03`. Hunt $ **−48%** | No. Product move: name a cited ADR. Do not retune the KEEP fixture |
-| L1o | Force one extra file | Gold 100% → 0% on `pg-01` and `pg-02`. $ **−40%**. `pg-01` answered `9104` | No. Cheaper and wrong |
-| L1j | Job headers on a copy map | Dual-load still 100% on those two prefix-golds. ADR still closed. `ms-03` broke cap | No. Shape did not beat leftover-slot fill |
-
-### What you may quote
-
-- Mapped facts: same gold, same cite, 63% fewer files, not cheaper $, 5× turns.
-- Unnamed ADRs: dump finds them. Cap does not, and costs ~2× hunting.
-- Name the ADR when agents should find it.
-- Do not sell cap-as-cheaper. Do not sell job tables. Do not sell one-extra-file.
-
-### What you may not quote as product KEEP
-
-Cratewake is self-authored. n=10 throwaway. No `$call1`. No subject pin. A 54-task Claude rerun would still be throwaway. Trial 1 needs a real product and provider billed buckets. See `docs/eval.md`.
-
-Dropped from the freeze because they were never measured: the number 200, mermaid/dek as speed claims, this method as a full eng handbook (CI, types, on-call).
-
-Still unmeasured, still in the freeze as provenance: architecture must not recap schema fields (Bob). Reorder-as-cache-miss has no prefix-bust pair.
-
----
-
-## Steal and veto
-
-| Source | Steal | Veto |
-| --- | --- | --- |
-| [GitHub Spec Kit](https://github.github.com/spec-kit/) | Intent before code | Per-feature `spec.md` / `plan.md` / `tasks.md` |
-| [OpenSpec](https://openspec.dev/docs/overview) | Delta of behavior. Enablers, not gates. Archive into truth | `openspec/specs/` as a second truth |
-| [Kiro specs](https://kiro.dev/docs/specs/) | What / how / steps as a thinking order | Three new files per spec forever |
-| [agents.md](https://agents.md/) | README for humans, `AGENTS.md` as the map | Fat AGENTS. Job tables as load policy. `CLAUDE.md` forks |
-| [llms.txt](https://llmstxt.org/index.md) | Curated links, Optional = skippable | A second `/llms.txt`. `llms-full.txt` (dump) |
-| [Karpathy llm-wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) | Index, then drill one page | An LLM-owned wiki that restates the spec |
-| [Anthropic context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) | Attention budget. Just-in-time paths | Compacting the product spec. Sub-agents instead of a map |
-| [Nygard ADR](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions) | One decision, one file, superseded-by | Globbing the folder |
-| [Diátaxis](https://diataxis.fr/) | Four needs can live inside our filenames | `tutorials/` `how-to/` `reference/` trees |
-
----
-
-## This checkout
-
-| Path | What it is |
-| --- | --- |
-| `TROYS-SDD.md` | This handbook |
-| `README.md` | How to run the microbench. Not the method |
-| `AGENTS.md` | Map of this repo |
-| `docs/eval.md` | KEEP winner rule for a **real** product. No subject pinned. Must not name cratewake |
-| `fixtures/product/` | Cratewake. Do not retune its `AGENTS.md` against tasks |
-| `sdd-eval-tasks.yaml` | 40 prefix-gold + 14 missing-slice. Hash in README is not a KEEP pin |
-| `src/run.ts` | Harness. This code is the architecture of the bench |
-| `src/claude-cli.ts` | Claude Code subject. Treatments L0, L1, L1n, L1o, L1j |
-| `evals/` | Logs. Gitignored. Not docs |
-| `grokbot session.md` | Conversation freeze. Not the handbook |
-
-Canvases (open beside chat, not in git as product docs):
-
-- Cookbook metrics: `canvases/sdd-cookbook.canvas.tsx` under the Cursor project
-- Handbook UI: `canvases/sdd-handbook.canvas.tsx`
-
-### Commands
-
-```bash
-npm ci
-npm test
-npm run check
-```
-
-`npm run check` does not call a model and does not score KEEP.
-
-```bash
-OPENAI_API_KEY=... npm run eval
-```
-
-That path can emit `$call1`. Still a cratewake microbench. Still not KEEP.
-
-```bash
-npm run eval:claude-pilot
-npm run eval:claude-wave2
-npm run eval:claude-wave3
-```
-
-Claude Code subscription. `cli_cost_usd` is not `$call1`.
-
-`SDD_CAP=mechanical` writes a harness enforcement log (`evals/run-mechanical-cap.jsonl`). It is not allowlist+cap, not Troy's SDD, not KEEP, and not W4.
-
----
-
-## Apply in another repo
-
-1. Create the allowlisted files the ladder needs.
-2. Keep `AGENTS.md` a skim of paths.
-3. When a decision ships, write `docs/decisions/NNN-title.md`. If agents must find it on ordinary turns, add one map line. If not, leave it silent and accept that dump would still find it.
-4. Do not copy this file into that repo.
+Do not retune `fixtures/product/AGENTS.md` against the yaml tasks. Do not copy this handbook into cratewake.

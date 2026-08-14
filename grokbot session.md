@@ -118,3 +118,28 @@ Kept unmeasured: schema-not-recap (Bob), prefix-bust cache pair.
 AGENTS.md stays thin pointers, no architecture pasted. No line cap to quote.
 
 Handbook v0.8 lives in TROYS-SDD.md (this checkout only). Product repos still do not get COOKBOOK.md. Philosophy: allowlist + per-turn load, not Spec Kit / OpenSpec / Kiro artifact trees. Cost-efficient means skip unused and name cited ADRs, not “cap is cheaper.” Rot: attention budget, cite don’t paste, don’t compact the spec. Bloat: no spec.md/plan.md/tasks.md per feature, no llms-full, no second map.
+
+---
+
+Handbook v0.9 (2026-08-14). L1h docs-load Read hook, four matched tasks vs wave-1 L1. Throwaway. Not KEEP.
+
+CHANGE — hooks fence load; they do not train it.
+keep-inside-root stays the product copy (writes/shell in this root). Do not copy hooks/docs-load.mjs into a product, the fixture, or this repo’s live Read hooks.
+Evidence: cap_obey 3/4 → 4/4 (ms-02 denied eval.md as 4th extra). Prefix dual-load 2/2 → 0/2. Gold 2/4 → 1/4 (pg-02 dock:lease vs cratewake dock:lease, same miss as L1o). Missing-slice gold 0/2. cli_cost_usd +19%. Silent ADR still unnamed. --safe-mode disables hooks; drop it without pinning opus and denying mcp__* and you measured a different subject.
+
+Logs: evals/claude-wave4-L1h.jsonl (gitignored).
+
+---
+
+Handbook v1.0 (2026-08-14). Review response. Maintenance dimension, no new load rules.
+
+ADD — layer rule: hooks enforce invariants, docs teach judgment, never swap them. Hook-worthy is side-effect boundaries, destructive commands, secrets, format gates: false no cheap, missed yes expensive, fail closed. Never hook load discipline, routing, or style. Never gate reads.
+ADD — hook hygiene: one script N adapters; test deny AND allow (allow-test is the skipped one); repo-local for invariants, global only for ergonomics; budget hooks like dependencies and audit dead ones.
+ADD — ADR map rule: a map line iff violating the ADR would produce a plausible-looking wrong change. Runtime behaviour → map it. "pnpm over npm" → silent.
+ADD — executable-spec priority: test > eval > schema-in-code > prose. docs/ holds the non-executable residue.
+ADD — layer table (map / docs / hooks / tests / bench) and the loop: bench → handbook rule with its number → mechanical subset in map+hooks → lint between benches.
+ADD — provenance on section 8: Claude Code 2.1.223, claude-opus-5, 2026-08-14. Re-bench on model change. Keep the graveyard of failed probes with cost figures.
+
+CODE — src/docs-lint.ts + npm run lint:docs, wired into npm run check. Fails on a dangling map bullet or dead markdown link. Deliberately NOT "every backticked path exists": a handbook is full of paths you must not create, so that rule is all false positives. Gold-token uniqueness was already in check() (one fact, one file) — not rebuilt.
+Not a hook. A lint on the docs is not a gate on the agent.
+Tests: 54 pass, including an allow-test per failure mode and a dogfood lint of this repo's own map.
