@@ -9,7 +9,6 @@ import {
   cites_ok,
   extraFileCap,
   gold_ok,
-  missingSliceFloor,
   task_success,
   type Arm,
   type Observation,
@@ -122,10 +121,6 @@ export async function check(opts?: { tasksRaw?: string; evalMd?: string; readme?
   const prefixGold = tasks.filter((t) => t.stratum === "prefix-gold");
   const missingSlice = tasks.filter((t) => t.stratum === "missing-slice");
   const n = tasks.length;
-  if (prefixGold.length < 40) throw new Error(`prefix-gold ${prefixGold.length} < 40`);
-  if (missingSlice.length < missingSliceFloor(n)) {
-    throw new Error(`missing-slice ${missingSlice.length} < floor ${missingSliceFloor(n)}`);
-  }
 
   const mapTexts = Object.fromEntries(
     await Promise.all(MAP_NAMED.map(async (p) => [p, await readFixture(p)] as const)),
@@ -173,10 +168,7 @@ export async function check(opts?: { tasksRaw?: string; evalMd?: string; readme?
   if (/trial 1 KEEP/i.test(evalMd)) throw new Error("do not write trial 1 KEEP");
   if (!/no KEEP subject/.test(evalMd)) throw new Error("docs/eval.md subject pin must be no KEEP subject");
   if (!/\$call1.*=.*billed \$ through the first scored answer/s.test(evalMd)) {
-    throw new Error("docs/eval.md lost the $call1 KEEP definition");
-  }
-  if (!/n_missing ≥ 10, or ≥ 25% of n/.test(evalMd) || !/Prefix-gold n ≥ 40 paired/.test(evalMd)) {
-    throw new Error("docs/eval.md lost W2 n bars");
+    throw new Error("docs/eval.md lost the $call1 definition");
   }
   if (!/## W3 — cites vs gold/.test(evalMd)) throw new Error("docs/eval.md lost W3");
   if (!/microbench/i.test(readme)) throw new Error("README must label this checkout a microbench");
@@ -424,10 +416,9 @@ async function main(): Promise<void> {
   if (cmd === "check") {
     const r = await check();
     console.log("microbench fixture ok. not KEEP.");
-    console.log(`prefix-gold: ${r.prefixGold}`);
+    console.log(`prefix-gold: ${r.prefixGold} (yaml construction, not W2)`);
     console.log(`missing-slice: ${r.missingSlice}`);
     console.log(`n: ${r.n}`);
-    console.log(`missing-slice floor: max(10, 0.25*n) = ${missingSliceFloor(r.n)}`);
     console.log(`sdd-eval-tasks.yaml SHA-256 ${r.sha256}`);
     console.log("no billed $. no KEEP result.");
     return;

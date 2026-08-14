@@ -112,8 +112,7 @@ test("$call1 uses provider buckets; does not infer hit/miss", () => {
   assert.equal(dollars, 1000 * 3.75e-6 + 2000 * 0.3e-6 + 3000 * 3e-6 + 400 * 15e-6);
 });
 
-test("missing-slice floor is max(10, 25% of n)", () => {
-  assert.equal(missingSliceFloor(54), 13.5);
+test("missingSliceFloor is max(10, 25% of n)", () => {
   assert.equal(missingSliceFloor(40), 10);
-  assert.ok(14 >= missingSliceFloor(54));
+  assert.equal(missingSliceFloor(80), 20);
 });

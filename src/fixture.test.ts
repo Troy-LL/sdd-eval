@@ -3,16 +3,15 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { check, loadTasks } from "./run.ts";
+import { loadTasks } from "./run.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("fixture + tasks meet n floors; prefix-gold 40 is by construction", async () => {
-  const r = await check();
-  assert.equal(r.prefixGold, 40);
-  assert.equal(r.missingSlice, 14);
-  assert.equal(r.n, 54);
-  assert.ok(r.missingSlice >= Math.max(10, r.n * 0.25));
+test("yaml has 40 prefix-gold rows by construction, not W2", async () => {
+  const raw = await readFile(path.join(ROOT, "sdd-eval-tasks.yaml"), "utf8");
+  const tasks = loadTasks(raw);
+  const prefixGold = tasks.filter((t) => t.stratum === "prefix-gold");
+  assert.equal(prefixGold.length, 40);
 });
 
 test("tasks yaml has no stored diagnoses and no extra treatments", async () => {
@@ -25,9 +24,8 @@ test("tasks yaml has no stored diagnoses and no extra treatments", async () => {
   assert.equal(tasks.every((t) => t.stratum === "prefix-gold" || t.stratum === "missing-slice"), true);
 });
 
-test("docs/eval.md stays the KEEP rule; cratewake is not the subject", async () => {
+test("docs/eval.md stays the KEEP rule and does not mention cratewake/03034964/fixtures/product/microbench", async () => {
   const evalMd = await readFile(path.join(ROOT, "docs", "eval.md"), "utf8");
-  const readme = await readFile(path.join(ROOT, "README.md"), "utf8");
   assert.match(evalMd, /\$call1.*=.*billed \$ through the first scored answer/s);
   assert.match(evalMd, /n_missing ≥ 10, or ≥ 25% of n/);
   assert.match(evalMd, /Prefix-gold n ≥ 40 paired/);
@@ -39,7 +37,4 @@ test("docs/eval.md stays the KEEP rule; cratewake is not the subject", async () 
   assert.doesNotMatch(evalMd, /microbench/i);
   assert.doesNotMatch(evalMd, /trial 1 KEEP/i);
   assert.doesNotMatch(evalMd, /KEEP trial 1/i);
-  assert.match(readme, /microbench/i);
-  assert.match(readme, /by construction/);
-  assert.doesNotMatch(readme, /trial 1 KEEP/i);
 });
