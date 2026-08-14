@@ -1,2 +1,3 @@
 node_modules/
 evals/
+.claude/settings.local.json

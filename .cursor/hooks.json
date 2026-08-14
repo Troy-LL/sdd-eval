@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "node hooks/keep-inside-root.mjs",
+        "failClosed": true
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "node hooks/keep-inside-root.mjs",
+        "failClosed": true
+      }
+    ]
+  }
+}
