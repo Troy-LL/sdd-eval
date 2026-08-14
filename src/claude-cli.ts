@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { accessSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -45,7 +46,16 @@ export const WAVE3_TREATMENTS = ["L1j"] as const;
 export const WAVE3_RUN: { treatment: Treatment; ids: readonly string[] }[] = [
   { treatment: "L1j", ids: ["pg-01", "pg-02", "ms-02", "ms-03"] },
 ];
-export type Treatment = "L0" | "L1" | (typeof WAVE2_TREATMENTS)[number] | (typeof WAVE3_TREATMENTS)[number];
+export const WAVE4_TREATMENTS = ["L1h"] as const;
+export const WAVE4_RUN: { treatment: Treatment; ids: readonly string[] }[] = [
+  { treatment: "L1h", ids: ["pg-01", "pg-02", "ms-02", "ms-03"] },
+];
+export type Treatment =
+  | "L0"
+  | "L1"
+  | (typeof WAVE2_TREATMENTS)[number]
+  | (typeof WAVE3_TREATMENTS)[number]
+  | (typeof WAVE4_TREATMENTS)[number];
 
 export function scoringArm(treatment: Treatment): Arm {
   return treatment === "L0" || treatment === "K" ? "L0" : "L1";
@@ -85,6 +95,40 @@ Map only. This tree exists to be measured. Not a shipping product.
 - [\`docs/design.md\`](docs/design.md): Retry, Surface
 - [\`docs/eval.md\`](docs/eval.md): Command, SLOs
 `;
+}
+
+/** Installed on the L1h fixture copy only. Not this repo's live hooks. */
+export function docsHookSettings(): string {
+  return `${JSON.stringify(
+    {
+      hooks: {
+        SessionStart: [
+          {
+            hooks: [{ type: "command", command: "node hooks/docs-load.mjs" }],
+          },
+        ],
+        UserPromptSubmit: [
+          {
+            hooks: [{ type: "command", command: "node hooks/docs-load.mjs" }],
+          },
+        ],
+        PreToolUse: [
+          {
+            matcher: "Read",
+            hooks: [{ type: "command", command: "node hooks/docs-load.mjs" }],
+          },
+        ],
+        PostToolUse: [
+          {
+            matcher: "Read",
+            hooks: [{ type: "command", command: "node hooks/docs-load.mjs" }],
+          },
+        ],
+      },
+    },
+    null,
+    2,
+  )}\n`;
 }
 
 export type FileRequest = { path: string; ok: boolean };
@@ -264,11 +308,32 @@ function claudeBin(): string {
   return "claude.exe";
 }
 
+async function installDocsHooks(cwd: string): Promise<void> {
+  await mkdir(path.join(cwd, "hooks"), { recursive: true });
+  await mkdir(path.join(cwd, ".claude"), { recursive: true });
+  await copyFile(path.join(ROOT, "hooks", "docs-load.mjs"), path.join(cwd, "hooks", "docs-load.mjs"));
+  await writeFile(path.join(cwd, ".claude", "settings.json"), docsHookSettings());
+}
+
+async function resetDocsHookState(cwd: string): Promise<void> {
+  try {
+    await unlink(path.join(cwd, ".sdd-hook-state.json"));
+  } catch {
+    /* first task, or already gone */
+  }
+}
+
 export async function invokeClaude(opts: {
   cwd: string;
   prompt: string;
   tools: boolean;
   systemPrompt?: string;
+  safeMode?: boolean;
+  settingSources?: string;
+  includeHookEvents?: boolean;
+  sessionId?: string;
+  model?: string;
+  disallowedTools?: string;
 }): Promise<string> {
   const args = [
     "-p",
@@ -280,10 +345,14 @@ export async function invokeClaude(opts: {
     "dontAsk",
     "--no-session-persistence",
     "--disable-slash-commands",
-    "--safe-mode",
     "--system-prompt",
     opts.systemPrompt ?? INSTRUCT,
   ];
+  if (opts.safeMode !== false) args.push("--safe-mode");
+  if (opts.settingSources) args.push("--setting-sources", opts.settingSources);
+  if (opts.includeHookEvents) args.push("--include-hook-events");
+  if (opts.sessionId) args.push("--session-id", opts.sessionId);
+  if (opts.model) args.push("--model", opts.model);
   if (!opts.tools) {
     args.push("--tools", "");
   } else {
@@ -293,7 +362,7 @@ export async function invokeClaude(opts: {
       "--allowedTools",
       "Read",
       "--disallowedTools",
-      "Bash,Edit,Write,Agent,Glob,Grep",
+      opts.disallowedTools ?? "Bash,Edit,Write,Agent,Glob,Grep",
     );
   }
   return await new Promise((resolve, reject) => {
@@ -377,14 +446,25 @@ export async function runClaudeTreatments(opts: {
     if (treatment === "L1j") {
       await writeFile(path.join(cwd, "AGENTS.md"), jobMap());
     }
+    if (treatment === "L1h") {
+      await installDocsHooks(cwd);
+    }
     console.log(`treatment=${treatment} cwd=${cwd}`);
     for (const task of tasks) {
+      if (treatment === "L1h") await resetDocsHookState(cwd);
       const prompt = await promptFor(cwd, task, treatment);
       const ndjson = await invokeClaude({
         cwd,
         prompt,
         tools: usesTools(treatment),
         systemPrompt: treatment === "L1e" ? exactSystemPrompt() : INSTRUCT,
+        safeMode: treatment !== "L1h",
+        settingSources: treatment === "L1h" ? "project" : undefined,
+        includeHookEvents: treatment === "L1h",
+        sessionId: treatment === "L1h" ? randomUUID() : undefined,
+        model: treatment === "L1h" ? "claude-opus-5" : undefined,
+        disallowedTools:
+          treatment === "L1h" ? "Bash,Edit,Write,Agent,Glob,Grep,mcp__*" : undefined,
       });
       await writeFile(path.join(rawDir, `${task.id}-${treatment}.ndjson`), ndjson);
       const parsed = parseClaudeStream(ndjson, cwd);
@@ -445,14 +525,27 @@ export async function runClaudeWave3(): Promise<void> {
   }
 }
 
+export async function runClaudeWave4(): Promise<void> {
+  for (const row of WAVE4_RUN) {
+    await runClaudeTreatments({
+      treatments: [row.treatment],
+      ids: row.ids,
+      outName: `claude-wave4-${row.treatment}`,
+      label: "wave4 L1h. docs-load hooks on the copy only. not KEEP. not this repo's live hooks.",
+    });
+  }
+}
+
 const entry = process.argv[1] && path.basename(process.argv[1]) === "claude-cli.ts";
 if (entry) {
   const wave =
-    process.argv[2] === "wave3"
-      ? runClaudeWave3
-      : process.argv[2] === "wave2"
-        ? runClaudeWave2
-        : runClaudePilot;
+    process.argv[2] === "wave4"
+      ? runClaudeWave4
+      : process.argv[2] === "wave3"
+        ? runClaudeWave3
+        : process.argv[2] === "wave2"
+          ? runClaudeWave2
+          : runClaudePilot;
   wave().catch((err) => {
     console.error(err instanceof Error ? err.message : err);
     process.exit(1);

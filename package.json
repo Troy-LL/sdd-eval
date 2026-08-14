@@ -4,8 +4,10 @@
   "type": "module",
   "scripts": {
     "check": "tsx src/run.ts check",
+    "lint:docs": "tsx src/run.ts lint-docs",
     "eval:claude-wave2": "tsx src/run.ts claude-wave2",
     "eval:claude-wave3": "tsx src/run.ts claude-wave3",
+    "eval:claude-wave4": "tsx src/run.ts claude-wave4",
     "test": "tsx --test src/*.test.ts"
   },
   "engines": {

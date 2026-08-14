@@ -756,10 +756,27 @@ async function runLive(): Promise<void> {
   console.log(`wrote ${outPath} (gitignored). microbench. not KEEP.`);
 }
 
+/** Dangling map bullets and dead links in this repo's own docs. */
+async function lintDocsHere(): Promise<void> {
+  const { formatIssues, lintDocs } = await import("./docs-lint.ts");
+  const issues = await lintDocs({
+    root: ROOT,
+    map: "AGENTS.md",
+    docs: ["README.md", "TROYS-SDD.md", "docs/eval.md"],
+  });
+  if (issues.length) throw new Error(`docs lint:\n${formatIssues(issues)}`);
+  console.log("docs lint ok: map bullets and links resolve.");
+}
+
 async function main(): Promise<void> {
   const cmd = process.argv[2] ?? "check";
+  if (cmd === "lint-docs") {
+    await lintDocsHere();
+    return;
+  }
   if (cmd === "check") {
     const r = await check();
+    await lintDocsHere();
     console.log("microbench fixture ok. not KEEP.");
     console.log(`prefix-gold: ${r.prefixGold} (yaml construction, not W2)`);
     console.log(`missing-slice: ${r.missingSlice}`);
@@ -785,6 +802,11 @@ async function main(): Promise<void> {
   if (cmd === "claude-wave3") {
     const { runClaudeWave3 } = await import("./claude-cli.ts");
     await runClaudeWave3();
+    return;
+  }
+  if (cmd === "claude-wave4") {
+    const { runClaudeWave4 } = await import("./claude-cli.ts");
+    await runClaudeWave4();
     return;
   }
   throw new Error(`unknown command ${cmd}`);

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   claudePilotLine,
+  docsHookSettings,
   exactSystemPrompt,
   jobMap,
   namedMap,
@@ -13,6 +14,7 @@ import {
   WAVE2_RUN,
   WAVE2_TREATMENTS,
   WAVE3_RUN,
+  WAVE4_RUN,
 } from "./claude-cli.ts";
 import { cap_obey, gold_ok, task_success, type Observation, type Task } from "./schema.ts";
 import { derive } from "./run.ts";
@@ -67,6 +69,23 @@ test("wave3 is L1j on pg-01 pg-02 ms-02 ms-03", () => {
     [["L1j", ["pg-01", "pg-02", "ms-02", "ms-03"]]],
   );
   assert.equal(scoringArm("L1j"), "L1");
+});
+
+test("wave4 is L1h on pg-01 pg-02 ms-02 ms-03", () => {
+  assert.deepEqual(
+    WAVE4_RUN.map((r) => [r.treatment, [...r.ids]]),
+    [["L1h", ["pg-01", "pg-02", "ms-02", "ms-03"]]],
+  );
+  assert.equal(scoringArm("L1h"), "L1");
+});
+
+test("docsHookSettings is a Claude Read hook, not a gold leak", () => {
+  const settings = docsHookSettings();
+  assert.match(settings, /docs-load\.mjs/);
+  assert.match(settings, /PreToolUse/);
+  assert.match(settings, /UserPromptSubmit/);
+  assert.doesNotMatch(settings, /001-preempt-lease/);
+  assert.doesNotMatch(settings, /7481\/tcp|9104|cratewake dock:lease|max-bays 36/);
 });
 
 test("jobMap does not name the ADR or gold tokens", () => {
