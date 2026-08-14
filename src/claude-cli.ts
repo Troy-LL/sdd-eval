@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { accessSync } from "node:fs";
-import { copyFile, mkdir, mkdtemp, readFile, unlink, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, mkdtemp, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,6 +21,14 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const FIXTURE = path.join(ROOT, "fixtures", "product");
 const TASKS_PATH = path.join(ROOT, "sdd-eval-tasks.yaml");
 const EVAL_IN_PLAY = true;
+
+/** Bench subject. Every Claude call pins this; init and completions must match. */
+export const BENCH_MODEL = "claude-opus-5";
+export const BENCH_MODEL_ALIAS = "claude-opus-5[1m]";
+export const BENCH_PERMISSION_MODE = "dontAsk";
+const ALLOWED_MODELS = new Set([BENCH_MODEL, BENCH_MODEL_ALIAS]);
+const DENY_MCP = "mcp__*";
+const DENY_TOOL_TREATMENT = `Bash,Edit,Write,Agent,Glob,Grep,${DENY_MCP}`;
 
 export const PILOT_IDS = [
   "pg-01",
@@ -133,6 +141,13 @@ export function docsHookSettings(): string {
 
 export type FileRequest = { path: string; ok: boolean };
 
+export type ClaudeInitMeta = {
+  model: string;
+  /** null: absent, not an array, or a non-string entry. */
+  tools: string[] | null;
+  permissionMode: string;
+};
+
 export type ClaudeStreamParse = {
   result_text: string;
   files_requested: FileRequest[];
@@ -141,7 +156,74 @@ export type ClaudeStreamParse = {
   session_id: string | null;
   num_turns: number | null;
   model: string;
+  init: ClaudeInitMeta | null;
+  init_count: number;
+  result_model: string | null;
+  completion_models: string[];
 };
+
+export function expectedTools(treatment: Treatment): string[] {
+  return usesTools(treatment) ? ["Read"] : [];
+}
+
+export function isAllowedBenchModel(model: string): boolean {
+  return ALLOWED_MODELS.has(model);
+}
+
+function addModel(models: string[], model: string): void {
+  if (!models.includes(model)) models.push(model);
+}
+
+function parseInitTools(v: unknown): string[] | null {
+  if (!Array.isArray(v)) return null;
+  if (!v.every((t) => typeof t === "string")) return null;
+  return v as string[];
+}
+
+function assertToolSet(got: string[], want: string[], prefix: string): void {
+  const gotSet = new Set(got);
+  if (gotSet.size !== got.length) {
+    throw new Error(`${prefix}: duplicate tools ${JSON.stringify(got)}`);
+  }
+  if (gotSet.size !== want.length || !want.every((t) => gotSet.has(t))) {
+    const mcp = got.filter((t) => t.startsWith("mcp__"));
+    const extra = mcp.length ? `; mcp tools ${mcp.join(",")}` : "";
+    throw new Error(
+      `${prefix}: tools ${JSON.stringify(got)} !== ${JSON.stringify(want)}${extra}`,
+    );
+  }
+}
+
+/** Fail-closed. Contaminated streams must not become scored logs. */
+export function assertCleanClaudeInit(parsed: ClaudeStreamParse, treatment: Treatment): void {
+  const prefix = `${treatment}: contamination`;
+  if (parsed.init_count === 0 || !parsed.init) {
+    throw new Error(`${prefix}: missing system/init`);
+  }
+  if (parsed.init_count !== 1) {
+    throw new Error(`${prefix}: duplicate system/init count=${parsed.init_count}`);
+  }
+  if (!isAllowedBenchModel(parsed.init.model)) {
+    throw new Error(`${prefix}: init model ${parsed.init.model} !== ${BENCH_MODEL}`);
+  }
+  if (parsed.completion_models.length === 0) {
+    throw new Error(`${prefix}: missing completion model`);
+  }
+  for (const m of parsed.completion_models) {
+    if (!isAllowedBenchModel(m)) {
+      throw new Error(`${prefix}: completion model ${m} !== ${BENCH_MODEL}`);
+    }
+  }
+  if (parsed.init.permissionMode !== BENCH_PERMISSION_MODE) {
+    throw new Error(
+      `${prefix}: permissionMode ${parsed.init.permissionMode} !== ${BENCH_PERMISSION_MODE}`,
+    );
+  }
+  if (parsed.init.tools === null) {
+    throw new Error(`${prefix}: malformed tools`);
+  }
+  assertToolSet(parsed.init.tools, expectedTools(treatment), prefix);
+}
 
 type PendingRead = { index: number; path: string };
 
@@ -174,6 +256,10 @@ export function parseClaudeStream(ndjson: string, cwd: string): ClaudeStreamPars
   let session_id: string | null = null;
   let num_turns: number | null = null;
   let model = "claude-code";
+  let init: ClaudeInitMeta | null = null;
+  let init_count = 0;
+  let result_model: string | null = null;
+  const completion_models: string[] = [];
 
   for (const raw of ndjson.split(/\r?\n/)) {
     if (!raw.trim()) continue;
@@ -184,11 +270,21 @@ export function parseClaudeStream(ndjson: string, cwd: string): ClaudeStreamPars
       continue;
     }
     if (!isRecord(row)) continue;
-    if (row.type === "system" && row.subtype === "init" && typeof row.model === "string") {
-      model = row.model;
-      if (typeof row.session_id === "string") session_id = row.session_id;
+    if (row.type === "system" && row.subtype === "init") {
+      init_count += 1;
+      if (init_count === 1) {
+        const initModel = typeof row.model === "string" ? row.model : "";
+        const permissionMode = typeof row.permissionMode === "string" ? row.permissionMode : "";
+        init = { model: initModel, tools: parseInitTools(row.tools), permissionMode };
+        if (initModel) model = initModel;
+        if (typeof row.session_id === "string") session_id = row.session_id;
+      }
     }
     if (row.type === "assistant") {
+      const message = isRecord(row.message) ? row.message : null;
+      if (message && typeof message.model === "string") {
+        addModel(completion_models, message.model);
+      }
       for (const block of contentBlocks(row)) {
         if (block.type !== "tool_use" || block.name !== "Read") continue;
         const input = isRecord(block.input) ? block.input : {};
@@ -215,7 +311,11 @@ export function parseClaudeStream(ndjson: string, cwd: string): ClaudeStreamPars
       if (typeof row.total_cost_usd === "number") cli_cost_usd = row.total_cost_usd;
       if (typeof row.session_id === "string") session_id = row.session_id;
       if (typeof row.num_turns === "number") num_turns = row.num_turns;
-      if (typeof row.model === "string") model = row.model;
+      if (typeof row.model === "string") {
+        result_model = row.model;
+        model = row.model;
+        addModel(completion_models, row.model);
+      }
     }
   }
 
@@ -235,6 +335,10 @@ export function parseClaudeStream(ndjson: string, cwd: string): ClaudeStreamPars
     session_id,
     num_turns,
     model,
+    init,
+    init_count,
+    result_model,
+    completion_models,
   };
 }
 
@@ -352,9 +456,9 @@ export async function invokeClaude(opts: {
   if (opts.settingSources) args.push("--setting-sources", opts.settingSources);
   if (opts.includeHookEvents) args.push("--include-hook-events");
   if (opts.sessionId) args.push("--session-id", opts.sessionId);
-  if (opts.model) args.push("--model", opts.model);
+  args.push("--model", opts.model ?? BENCH_MODEL);
   if (!opts.tools) {
-    args.push("--tools", "");
+    args.push("--tools", "", "--disallowedTools", opts.disallowedTools ?? DENY_MCP);
   } else {
     args.push(
       "--tools",
@@ -362,7 +466,7 @@ export async function invokeClaude(opts: {
       "--allowedTools",
       "Read",
       "--disallowedTools",
-      opts.disallowedTools ?? "Bash,Edit,Write,Agent,Glob,Grep",
+      opts.disallowedTools ?? DENY_TOOL_TREATMENT,
     );
   }
   return await new Promise((resolve, reject) => {
@@ -415,6 +519,94 @@ function observationFromParse(opts: {
   };
 }
 
+export type EvalArtifactPaths = {
+  rawDir: string;
+  summaryPath: string;
+  stagingRaw: string;
+  stagingSummary: string;
+  backupRaw: string;
+  backupSummary: string;
+};
+
+export function evalArtifactPaths(outDir: string, outName: string, invocationId: string): EvalArtifactPaths {
+  return {
+    rawDir: path.join(outDir, outName),
+    summaryPath: path.join(outDir, `${outName}.jsonl`),
+    stagingRaw: path.join(outDir, `${outName}.staging-${invocationId}`),
+    stagingSummary: path.join(outDir, `${outName}.jsonl.staging-${invocationId}`),
+    backupRaw: path.join(outDir, `${outName}.backup-${invocationId}`),
+    backupSummary: path.join(outDir, `${outName}.jsonl.backup-${invocationId}`),
+  };
+}
+
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function rmForce(p: string, dir: boolean): Promise<void> {
+  await rm(p, { recursive: dir, force: true });
+}
+
+/**
+ * Same-filesystem rename swap. Back up finals, install staging, restore on error.
+ * `failAfter` is a test hook only.
+ */
+export async function commitEvalArtifacts(
+  paths: EvalArtifactPaths,
+  opts?: { failAfter?: "backup" | "install-raw" | "install-summary" },
+): Promise<void> {
+  let backedUpRaw = false;
+  let backedUpSummary = false;
+  let installedRaw = false;
+  let installedSummary = false;
+  let committed = false;
+  try {
+    if (await pathExists(paths.rawDir)) {
+      await rename(paths.rawDir, paths.backupRaw);
+      backedUpRaw = true;
+    }
+    if (await pathExists(paths.summaryPath)) {
+      await rename(paths.summaryPath, paths.backupSummary);
+      backedUpSummary = true;
+    }
+    if (opts?.failAfter === "backup") throw new Error("simulated install failure");
+
+    await rename(paths.stagingRaw, paths.rawDir);
+    installedRaw = true;
+    if (opts?.failAfter === "install-raw") throw new Error("simulated install failure");
+
+    await rename(paths.stagingSummary, paths.summaryPath);
+    installedSummary = true;
+    if (opts?.failAfter === "install-summary") throw new Error("simulated install failure");
+
+    committed = true;
+  } catch (err) {
+    try {
+      if (installedRaw) await rmForce(paths.rawDir, true);
+      if (installedSummary) await rmForce(paths.summaryPath, false);
+      if (backedUpRaw) await rename(paths.backupRaw, paths.rawDir);
+      if (backedUpSummary) await rename(paths.backupSummary, paths.summaryPath);
+    } catch (rollbackErr) {
+      const a = err instanceof Error ? err.message : String(err);
+      const b = rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr);
+      throw new Error(`commit failed: ${a}; rollback failed: ${b}`);
+    }
+    throw err;
+  } finally {
+    await rmForce(paths.stagingRaw, true);
+    await rmForce(paths.stagingSummary, false);
+    if (committed) {
+      await rmForce(paths.backupRaw, true);
+      await rmForce(paths.backupSummary, false);
+    }
+  }
+}
+
 export async function runClaudeTreatments(opts: {
   treatments: readonly Treatment[];
   ids?: readonly string[];
@@ -428,70 +620,79 @@ export async function runClaudeTreatments(opts: {
   }
   const { cp } = await import("node:fs/promises");
   const outDir = path.join(ROOT, "evals");
-  const rawDir = path.join(outDir, opts.outName);
-  await mkdir(rawDir, { recursive: true });
-  const outPath = path.join(outDir, `${opts.outName}.jsonl`);
+  const artifacts = evalArtifactPaths(outDir, opts.outName, randomUUID());
   const lines: string[] = [];
 
   console.log(`${opts.label} throwaway. not KEEP. cli_cost_usd is a client-side estimate.`);
 
-  for (const treatment of opts.treatments) {
-    const cwd = await mkdtemp(path.join(os.tmpdir(), `sdd-eval-${treatment}-`));
-    await mkdir(cwd, { recursive: true });
-    await cp(FIXTURE, cwd, { recursive: true });
-    if (treatment === "L1n") {
-      const agents = await readRel(cwd, "AGENTS.md");
-      await writeFile(path.join(cwd, "AGENTS.md"), namedMap(agents));
-    }
-    if (treatment === "L1j") {
-      await writeFile(path.join(cwd, "AGENTS.md"), jobMap());
-    }
-    if (treatment === "L1h") {
-      await installDocsHooks(cwd);
-    }
-    console.log(`treatment=${treatment} cwd=${cwd}`);
-    for (const task of tasks) {
-      if (treatment === "L1h") await resetDocsHookState(cwd);
-      const prompt = await promptFor(cwd, task, treatment);
-      const ndjson = await invokeClaude({
-        cwd,
-        prompt,
-        tools: usesTools(treatment),
-        systemPrompt: treatment === "L1e" ? exactSystemPrompt() : INSTRUCT,
-        safeMode: treatment !== "L1h",
-        settingSources: treatment === "L1h" ? "project" : undefined,
-        includeHookEvents: treatment === "L1h",
-        sessionId: treatment === "L1h" ? randomUUID() : undefined,
-        model: treatment === "L1h" ? "claude-opus-5" : undefined,
-        disallowedTools:
-          treatment === "L1h" ? "Bash,Edit,Write,Agent,Glob,Grep,mcp__*" : undefined,
-      });
-      await writeFile(path.join(rawDir, `${task.id}-${treatment}.ndjson`), ndjson);
-      const parsed = parseClaudeStream(ndjson, cwd);
-      if (!parsed.session_id) {
-        throw new Error(`${task.id} ${treatment}: no Claude result. head=${JSON.stringify(ndjson.slice(0, 180))}`);
+  await mkdir(outDir, { recursive: true });
+  await mkdir(artifacts.stagingRaw, { recursive: true });
+  try {
+    for (const treatment of opts.treatments) {
+      const cwd = await mkdtemp(path.join(os.tmpdir(), `sdd-eval-${treatment}-`));
+      await mkdir(cwd, { recursive: true });
+      await cp(FIXTURE, cwd, { recursive: true });
+      if (treatment === "L1n") {
+        const agents = await readRel(cwd, "AGENTS.md");
+        await writeFile(path.join(cwd, "AGENTS.md"), namedMap(agents));
       }
-      const obs = observationFromParse({ task, treatment, parsed });
-      const d = derive(obs, task);
-      const line = claudePilotLine(obs, d, {
-        treatment,
-        cli_cost_usd: parsed.cli_cost_usd,
-        session_id: parsed.session_id,
-        files_requested: parsed.files_requested,
-        num_turns: parsed.num_turns,
-      });
-      lines.push(JSON.stringify(line));
-      console.log(
-        `${task.id} ${treatment} gold=${d.gold_ok} cap=${d.cap_obey} success=${d.task_success}` +
-          ` cites=${d.cites_ok} $call1=omitted` +
-          (parsed.cli_cost_usd !== null ? ` cli_cost_usd=${parsed.cli_cost_usd}` : "") +
-          ` loaded=${obs.loaded_paths.join(",")}`,
-      );
+      if (treatment === "L1j") {
+        await writeFile(path.join(cwd, "AGENTS.md"), jobMap());
+      }
+      if (treatment === "L1h") {
+        await installDocsHooks(cwd);
+      }
+      console.log(`treatment=${treatment} cwd=${cwd}`);
+      for (const task of tasks) {
+        if (treatment === "L1h") await resetDocsHookState(cwd);
+        const prompt = await promptFor(cwd, task, treatment);
+        const ndjson = await invokeClaude({
+          cwd,
+          prompt,
+          tools: usesTools(treatment),
+          systemPrompt: treatment === "L1e" ? exactSystemPrompt() : INSTRUCT,
+          safeMode: treatment !== "L1h",
+          settingSources: treatment === "L1h" ? "project" : undefined,
+          includeHookEvents: treatment === "L1h",
+          sessionId: treatment === "L1h" ? randomUUID() : undefined,
+        });
+        const parsed = parseClaudeStream(ndjson, cwd);
+        try {
+          assertCleanClaudeInit(parsed, treatment);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new Error(`${task.id} ${msg}`);
+        }
+        if (!parsed.session_id) {
+          throw new Error(`${task.id} ${treatment}: no Claude result. head=${JSON.stringify(ndjson.slice(0, 180))}`);
+        }
+        await writeFile(path.join(artifacts.stagingRaw, `${task.id}-${treatment}.ndjson`), ndjson);
+        const obs = observationFromParse({ task, treatment, parsed });
+        const d = derive(obs, task);
+        const line = claudePilotLine(obs, d, {
+          treatment,
+          cli_cost_usd: parsed.cli_cost_usd,
+          session_id: parsed.session_id,
+          files_requested: parsed.files_requested,
+          num_turns: parsed.num_turns,
+        });
+        lines.push(JSON.stringify(line));
+        console.log(
+          `${task.id} ${treatment} gold=${d.gold_ok} cap=${d.cap_obey} success=${d.task_success}` +
+            ` cites=${d.cites_ok} $call1=omitted` +
+            (parsed.cli_cost_usd !== null ? ` cli_cost_usd=${parsed.cli_cost_usd}` : "") +
+            ` loaded=${obs.loaded_paths.join(",")}`,
+        );
+      }
     }
-  }
 
-  await writeFile(outPath, lines.join("\n") + "\n");
-  console.log(`wrote ${outPath} (gitignored). microbench. not KEEP.`);
+    await writeFile(artifacts.stagingSummary, lines.join("\n") + "\n");
+    await commitEvalArtifacts(artifacts);
+    console.log(`wrote ${artifacts.summaryPath} (gitignored). microbench. not KEEP.`);
+  } finally {
+    await rm(artifacts.stagingRaw, { recursive: true, force: true });
+    await rm(artifacts.stagingSummary, { force: true });
+  }
 }
 
 export async function runClaudePilot(opts?: { ids?: readonly string[] }): Promise<void> {
