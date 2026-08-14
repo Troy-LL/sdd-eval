@@ -48,6 +48,6 @@ Passed audit does not waive this. Dump-winnable axes: missing-slice `task_succes
 
 ## Pins
 
-- Tasks hash (before run 1): `sdd-eval-tasks.yaml` SHA-256 `767a4266f91a923c1a17c24f1cd3fab56c3c55bddf6065ed464de51aa992b061`. Re-hash after a pilot is invalid.
-- Subject: Troy-LL/EditLayer `e726f48ad145734147a34a7772ff9aaac184059a`.
-- Prefix-bust pair: `26a80c8` → `622d0c04` (must diff an allowlisted prefix file).
+- Tasks hash (before run 1): none. No KEEP run is pinned.
+- Subject: no KEEP subject.
+- Prefix-bust pair: none. Unverified pair ⇒ no KEEP on `$call2plus`.
