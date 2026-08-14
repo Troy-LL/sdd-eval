@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
@@ -12,6 +12,7 @@ import {
   gold_ok,
   GPT_4O_MINI_RATES,
   isOpenAIUsage,
+  refuse_count,
   task_success,
   type Arm,
   type Observation,
@@ -56,6 +57,98 @@ const ALLOWLIST = new Set<string>([
 const ADR = "docs/decisions/001-preempt-lease.md";
 const EVAL_IN_PLAY = true;
 
+export type CapMode = "prompt" | "mechanical";
+export const CAP_REFUSE = "cap: refuse";
+
+export function capModeFromEnv(env: NodeJS.ProcessEnv = process.env): CapMode {
+  const raw = env.SDD_CAP;
+  if (raw === undefined || raw === "" || raw === "prompt") return "prompt";
+  if (raw === "mechanical") return "mechanical";
+  throw new Error(`SDD_CAP must be prompt or mechanical, got ${JSON.stringify(raw)}`);
+}
+
+export function extraSlotsUsed(loaded: Iterable<string>): number {
+  return [...loaded].filter((p) => p !== "AGENTS.md").length;
+}
+
+export function toolFirstTurn(agents: string, extraCap: number, task: Task): {
+  role: "user";
+  blocks: { text: string; cache?: boolean }[];
+} {
+  return {
+    role: "user",
+    blocks: [
+      { text: `## AGENTS.md\n${agents}`, cache: true },
+      {
+        text: `L1 cap: AGENTS.md + at most ${extraCap} files (eval.md in play).\n\nTASK ${task.id}: ${task.prompt}`,
+      },
+    ],
+  };
+}
+
+export async function applyCapRead(opts: {
+  mode: CapMode;
+  loaded: Set<string>;
+  refused: string[];
+  rel: string;
+  extraCap: number;
+  read: (rel: string) => Promise<string>;
+}): Promise<string> {
+  if (opts.loaded.has(opts.rel)) {
+    try {
+      return await opts.read(opts.rel);
+    } catch {
+      return `missing: ${opts.rel}`;
+    }
+  }
+  if (opts.mode === "mechanical" && extraSlotsUsed(opts.loaded) >= opts.extraCap) {
+    opts.refused.push(opts.rel);
+    return CAP_REFUSE;
+  }
+  opts.loaded.add(opts.rel);
+  try {
+    return await opts.read(opts.rel);
+  } catch {
+    return `missing: ${opts.rel}`;
+  }
+}
+
+export function liveJsonlRel(mode: CapMode, existing: ReadonlySet<string>, at: Date = new Date()): string {
+  const preferred = mode === "mechanical" ? "run-mechanical-cap.jsonl" : "run.jsonl";
+  if (!existing.has(preferred)) return preferred;
+  const iso = at.toISOString();
+  const stem = mode === "mechanical" ? "run-mechanical-cap" : "run";
+  let name = `${stem}-${iso}.jsonl`;
+  let n = 2;
+  while (existing.has(name)) {
+    name = `${stem}-${iso}-${n}.jsonl`;
+    n += 1;
+  }
+  return name;
+}
+
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function resolveLiveJsonlPath(outDir: string, mode: CapMode, at: Date = new Date()): Promise<string> {
+  const existing = new Set<string>();
+  const preferred = liveJsonlRel(mode, existing, at);
+  const preferredFull = path.join(outDir, preferred);
+  if (!(await fileExists(preferredFull))) return preferredFull;
+  existing.add(preferred);
+  const next = liveJsonlRel(mode, existing, at);
+  if (mode === "mechanical" && next === "run.jsonl") {
+    throw new Error("mechanical-cap must not write evals/run.jsonl");
+  }
+  return path.join(outDir, next);
+}
+
 const RATES: Record<string, Rates> = {
   "claude-sonnet-4-20250514": {
     write_5m: 3.75e-6,
@@ -90,7 +183,7 @@ export function loadTasks(raw: string): Task[] {
   for (const row of doc.tasks) {
     if (!row || typeof row !== "object") throw new Error("task row is not an object");
     const t = row as Record<string, unknown>;
-    for (const key of ["cap_obey", "cites_ok", "task_success"] as const) {
+    for (const key of ["cap_obey", "cites_ok", "task_success", "refuse_count"] as const) {
       if (key in t) throw new Error(`do not store ${key}; derive it`);
     }
     if (typeof t.id !== "string" || typeof t.prompt !== "string" || typeof t.gold !== "string") {
@@ -177,6 +270,8 @@ export async function check(opts?: { tasksRaw?: string; evalMd?: string; readme?
   if (/fixtures\/product/i.test(evalMd)) throw new Error("docs/eval.md must not pin the microbench fixture");
   if (/microbench/i.test(evalMd)) throw new Error("docs/eval.md is the KEEP rule, not the microbench");
   if (/trial 1 KEEP/i.test(evalMd)) throw new Error("do not write trial 1 KEEP");
+  if (/mechanical-cap/i.test(evalMd)) throw new Error("docs/eval.md must not name mechanical-cap");
+  if (/L1-gated/i.test(evalMd)) throw new Error("docs/eval.md must not name L1-gated");
   if (!/no KEEP subject/.test(evalMd)) throw new Error("docs/eval.md subject pin must be no KEEP subject");
   if (!/\$call1.*=.*billed \$ through the first scored answer/s.test(evalMd)) {
     throw new Error("docs/eval.md lost the $call1 definition");
@@ -188,6 +283,14 @@ export async function check(opts?: { tasksRaw?: string; evalMd?: string; readme?
   if (!/microbench/i.test(readme)) throw new Error("README must label this checkout a microbench");
   if (!readme.includes(sha256)) throw new Error("README must carry the microbench tasks hash (not a KEEP pin)");
   if (/trial 1 KEEP/i.test(readme)) throw new Error("do not write trial 1 KEEP");
+  if (/L1-gated/i.test(readme)) throw new Error("do not call it L1-gated");
+  if (/same L1/.test(readme)) throw new Error("do not describe mechanical-cap as same L1");
+  if (!/harness enforcement log/.test(readme)) {
+    throw new Error("README must call mechanical-cap a harness enforcement log");
+  }
+  if (!/not allowlist\+cap/.test(readme)) {
+    throw new Error("README must say mechanical-cap is not allowlist+cap");
+  }
   if (!readme.includes("OPENAI_API_KEY")) {
     throw new Error("README must say how to run with OPENAI_API_KEY");
   }
@@ -489,22 +592,15 @@ async function runArm(opts: {
       usage,
       model: opts.model,
       provider: opts.provider,
+      refused_paths: [],
     };
   }
 
+  const capMode: CapMode = opts.arm === "mechanical-cap" ? "mechanical" : "prompt";
   loaded.add("AGENTS.md");
   const agents = await readFixture("AGENTS.md");
-  const history: HistoryItem[] = [
-    {
-      role: "user",
-      blocks: [
-        { text: `## AGENTS.md\n${agents}`, cache: true },
-        {
-          text: `L1 cap: AGENTS.md + at most ${extraCap} files (eval.md in play).\n\nTASK ${opts.task.id}: ${opts.task.prompt}`,
-        },
-      ],
-    },
-  ];
+  const history: HistoryItem[] = [toolFirstTurn(agents, extraCap, opts.task)];
+  const refused: string[] = [];
 
   let text = "";
   for (let round = 0; round < 8; round++) {
@@ -526,13 +622,14 @@ async function runArm(opts: {
     const results = [];
     for (const tu of resp.toolUses) {
       const rel = String(tu.input.path ?? "").replace(/^\.\//, "");
-      loaded.add(rel);
-      let content: string;
-      try {
-        content = await readFixture(rel);
-      } catch {
-        content = `missing: ${rel}`;
-      }
+      const content = await applyCapRead({
+        mode: capMode,
+        loaded,
+        refused,
+        rel,
+        extraCap,
+        read: readFixture,
+      });
       results.push({ id: tu.id, content });
     }
     history.push({ role: "tool_results", results });
@@ -541,7 +638,7 @@ async function runArm(opts: {
   const parsed = parseCiteAnswer(text);
   return {
     task_id: opts.task.id,
-    arm: "L1",
+    arm: opts.arm === "mechanical-cap" ? "mechanical-cap" : "L1",
     answer: parsed.answer,
     cited_path: parsed.cited_path,
     loaded_paths: [...loaded],
@@ -549,6 +646,7 @@ async function runArm(opts: {
     usage,
     model: opts.model,
     provider: opts.provider,
+    refused_paths: refused,
   };
 }
 
@@ -563,6 +661,7 @@ export function observationLine(obs: Observation): Record<string, unknown> {
     usage: obs.usage,
     model: obs.model,
     provider: obs.provider,
+    refused_paths: obs.refused_paths,
   };
 }
 
@@ -573,6 +672,7 @@ export function derive(obs: Observation, task: Task, envModel?: string): {
   gold_ok: boolean;
   task_success: boolean;
   call1_dollars: number | null;
+  refuse_count: number;
 } {
   void envModel;
   const modelId = typeof obs.model === "string" ? obs.model.trim() : "";
@@ -592,6 +692,7 @@ export function derive(obs: Observation, task: Task, envModel?: string): {
     gold_ok: gold_ok(obs.answer, task.gold),
     task_success: task_success(obs, task, ALLOWLIST),
     call1_dollars: dollars,
+    refuse_count: refuse_count(obs),
   };
 }
 
@@ -625,19 +726,27 @@ async function runLive(): Promise<void> {
   } else {
     throw new Error("no OPENAI_API_KEY or ANTHROPIC_API_KEY; stub path is `npm run check`. will not fake billed $");
   }
-  console.log(`model=${model}`);
+  const capMode = capModeFromEnv();
+  console.log(`model=${model} cap=${capMode}`);
   const tasks = loadTasks(await readFile(TASKS_PATH, "utf8"));
   const outDir = path.join(ROOT, "evals");
   await mkdir(outDir, { recursive: true });
-  const outPath = path.join(outDir, "run.jsonl");
+  const outPath = await resolveLiveJsonlPath(outDir, capMode);
+  if (capMode === "mechanical" && path.basename(outPath) === "run.jsonl") {
+    throw new Error("mechanical-cap must not overwrite evals/run.jsonl");
+  }
+  const toolArm: Arm = capMode === "mechanical" ? "mechanical-cap" : "L1";
   const lines: string[] = [];
   for (const task of tasks) {
-    for (const arm of ["L0", "L1"] as const) {
+    for (const arm of ["L0", toolArm] as const) {
       const obs = await runArm({ provider, apiKey, model, task, arm });
-      lines.push(JSON.stringify(observationLine(obs)));
+      const line = observationLine(obs);
+      if ("refuse_count" in line) throw new Error("do not store refuse_count on JSONL");
+      lines.push(JSON.stringify(line));
       const d = derive(obs, task, model);
       console.log(
         `${task.id} ${arm} gold=${d.gold_ok} cap=${d.cap_obey} success=${d.task_success}` +
+          ` refused=${d.refuse_count}` +
           (d.call1_dollars !== null ? ` $call1=${d.call1_dollars}` : " $call1=omitted") +
           usageLog(obs),
       );

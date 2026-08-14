@@ -49,6 +49,8 @@ ANTHROPIC_API_KEY=... npm run eval
 
 That path logs the model name and the provider's billed usage buckets, then derives `$call1` from published rates. OpenAI logs `prompt_tokens`, `completion_tokens`, and `cached_tokens` when present. It does not invent Anthropic `cache_creation_input_tokens` or infer hit/miss. No key, no `$`. Do not commit `evals/`. Do not read a local JSONL as KEEP.
 
+`SDD_CAP=mechanical` writes a harness enforcement log (`evals/run-mechanical-cap.jsonl`); it is not allowlist+cap, not the cookbook treatment, not KEEP, and not W4.
+
 ## What this repo may contain
 
 - `README.md` — this question
