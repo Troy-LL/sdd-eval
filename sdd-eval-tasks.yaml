@@ -1,0 +1,276 @@
+# microbench tasks. Not KEEP. Self-authored fixture cannot KEEP the cookbook.
+# prefix-gold: 40
+# missing-slice: 14
+# n: 54
+# missing-slice floor: max(10, 0.25 * 54) = 14
+tasks:
+  - id: pg-01
+    stratum: prefix-gold
+    prompt: What TCP listen token does cratewake use?
+    gold: "7481/tcp"
+    expected_path: README.md
+  - id: pg-02
+    stratum: prefix-gold
+    prompt: What command leases a bay?
+    gold: "cratewake dock:lease"
+    expected_path: README.md
+  - id: pg-03
+    stratum: prefix-gold
+    prompt: What is the max-bays limit token?
+    gold: "max-bays 36"
+    expected_path: README.md
+  - id: pg-04
+    stratum: prefix-gold
+    prompt: What is the default lease token?
+    gold: "lease-default 900s"
+    expected_path: README.md
+  - id: pg-05
+    stratum: prefix-gold
+    prompt: What is the config path?
+    gold: "/etc/cratewake/dock.toml"
+    expected_path: README.md
+  - id: pg-06
+    stratum: prefix-gold
+    prompt: What is the binary path?
+    gold: "/usr/local/bin/cratewake"
+    expected_path: README.md
+  - id: pg-07
+    stratum: prefix-gold
+    prompt: What is the log path?
+    gold: "/var/log/cratewake/dock.log"
+    expected_path: README.md
+  - id: pg-08
+    stratum: prefix-gold
+    prompt: What is the health path?
+    gold: "/v1/healthz"
+    expected_path: README.md
+  - id: pg-09
+    stratum: prefix-gold
+    prompt: What is the image tag?
+    gold: "cratewake/dock:1.4.9"
+    expected_path: README.md
+  - id: pg-10
+    stratum: prefix-gold
+    prompt: What is the tooling floor token?
+    gold: "min-node 20.11.3"
+    expected_path: README.md
+  - id: pg-11
+    stratum: prefix-gold
+    prompt: What is the schema path?
+    gold: "src/schema/lease.sql"
+    expected_path: docs/architecture.md
+  - id: pg-12
+    stratum: prefix-gold
+    prompt: What is the lease table token?
+    gold: "table dock_lease"
+    expected_path: docs/architecture.md
+  - id: pg-13
+    stratum: prefix-gold
+    prompt: What is the replica token?
+    gold: "dock-replicas 3"
+    expected_path: docs/architecture.md
+  - id: pg-14
+    stratum: prefix-gold
+    prompt: What is the heartbeat token?
+    gold: "heartbeat 2500ms"
+    expected_path: docs/architecture.md
+  - id: pg-15
+    stratum: prefix-gold
+    prompt: What is the WAL path?
+    gold: "/var/lib/cratewake/wal"
+    expected_path: docs/architecture.md
+  - id: pg-16
+    stratum: prefix-gold
+    prompt: What is the checksum token?
+    gold: "checksum BLAKE2s"
+    expected_path: docs/architecture.md
+  - id: pg-17
+    stratum: prefix-gold
+    prompt: What is the gRPC bind token?
+    gold: "grpc 9104"
+    expected_path: docs/architecture.md
+  - id: pg-18
+    stratum: prefix-gold
+    prompt: What is the inflight token?
+    gold: "inflight 128"
+    expected_path: docs/architecture.md
+  - id: pg-19
+    stratum: prefix-gold
+    prompt: What is the spill path?
+    gold: "/var/tmp/cratewake/spill"
+    expected_path: docs/architecture.md
+  - id: pg-20
+    stratum: prefix-gold
+    prompt: What is the clock token?
+    gold: "clock tai64n"
+    expected_path: docs/architecture.md
+  - id: pg-21
+    stratum: prefix-gold
+    prompt: What is the shard token?
+    gold: "shard-count 17"
+    expected_path: docs/architecture.md
+  - id: pg-22
+    stratum: prefix-gold
+    prompt: What is the control socket path?
+    gold: "/run/cratewake/ctl.sock"
+    expected_path: docs/architecture.md
+  - id: pg-23
+    stratum: prefix-gold
+    prompt: What is the retry token?
+    gold: "retry-budget 4"
+    expected_path: docs/design.md
+  - id: pg-24
+    stratum: prefix-gold
+    prompt: What is the backoff token?
+    gold: "backoff 175ms"
+    expected_path: docs/design.md
+  - id: pg-25
+    stratum: prefix-gold
+    prompt: What is the UI poll token?
+    gold: "ui-poll 800ms"
+    expected_path: docs/design.md
+  - id: pg-26
+    stratum: prefix-gold
+    prompt: What overdue pattern token is used?
+    gold: "hatch-45"
+    expected_path: docs/design.md
+  - id: pg-27
+    stratum: prefix-gold
+    prompt: What is the toast cap token?
+    gold: "max-toast 2"
+    expected_path: docs/design.md
+  - id: pg-28
+    stratum: prefix-gold
+    prompt: What is the overdue badge path?
+    gold: "ui/badges/bay-overdue.svg"
+    expected_path: docs/design.md
+  - id: pg-29
+    stratum: prefix-gold
+    prompt: What keyboard shortcut wakes the focused bay?
+    gold: "Alt+Shift+K"
+    expected_path: docs/design.md
+  - id: pg-30
+    stratum: prefix-gold
+    prompt: What is the empty-state copy?
+    gold: "No bay is awake"
+    expected_path: docs/design.md
+  - id: pg-31
+    stratum: prefix-gold
+    prompt: What is the stacking token?
+    gold: "z-index: 40"
+    expected_path: docs/design.md
+  - id: pg-32
+    stratum: prefix-gold
+    prompt: What is the focus ring token?
+    gold: "focus-ring 3px"
+    expected_path: docs/design.md
+  - id: pg-33
+    stratum: prefix-gold
+    prompt: What command writes gold jsonl?
+    gold: "npm run eval:gold"
+    expected_path: docs/eval.md
+  - id: pg-34
+    stratum: prefix-gold
+    prompt: What path does the gold command write?
+    gold: "evals/gold.jsonl"
+    expected_path: docs/eval.md
+  - id: pg-35
+    stratum: prefix-gold
+    prompt: What is the wake p99 token?
+    gold: "p99-wake 45ms"
+    expected_path: docs/eval.md
+  - id: pg-36
+    stratum: prefix-gold
+    prompt: What is the error-budget token?
+    gold: "error-budget 0.7%"
+    expected_path: docs/eval.md
+  - id: pg-37
+    stratum: prefix-gold
+    prompt: What is the scrape token?
+    gold: "scrape 15s"
+    expected_path: docs/eval.md
+  - id: pg-38
+    stratum: prefix-gold
+    prompt: What is the metric prefix?
+    gold: "cratewake_dock_"
+    expected_path: docs/eval.md
+  - id: pg-39
+    stratum: prefix-gold
+    prompt: What is the alert file path?
+    gold: "alerts/dock-lease.yaml"
+    expected_path: docs/eval.md
+  - id: pg-40
+    stratum: prefix-gold
+    prompt: What is the probe-count token?
+    gold: "probe-count 88"
+    expected_path: docs/eval.md
+  - id: ms-01
+    stratum: missing-slice
+    prompt: What is the preempt-window token?
+    gold: "preempt-window 12s"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-02
+    stratum: missing-slice
+    prompt: What command preempts a lease?
+    gold: "cratewake lease:preempt"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-03
+    stratum: missing-slice
+    prompt: What is the fence file path?
+    gold: "/var/lib/cratewake/fence.token"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-04
+    stratum: missing-slice
+    prompt: What is the loser-wait token?
+    gold: "loser-wait 6400ms"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-05
+    stratum: missing-slice
+    prompt: What is the preempt-per-hour token?
+    gold: "preempt-per-hour 9"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-06
+    stratum: missing-slice
+    prompt: What is the preempt reason code?
+    gold: "LEASE_PREEMPT_STALE"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-07
+    stratum: missing-slice
+    prompt: What is the audit topic?
+    gold: "cratewake.preempt.v1"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-08
+    stratum: missing-slice
+    prompt: What path skips preempt?
+    gold: "/etc/cratewake/no-preempt"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-09
+    stratum: missing-slice
+    prompt: What is the min-remaining token?
+    gold: "min-remaining 180s"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-10
+    stratum: missing-slice
+    prompt: What notify path yields a bay?
+    gold: "/v1/bays/{id}/yield"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-11
+    stratum: missing-slice
+    prompt: What is the preempt-jitter token?
+    gold: "preempt-jitter 93ms"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-12
+    stratum: missing-slice
+    prompt: What is the preempt freeze path?
+    gold: "/run/cratewake/preempt.freeze"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-13
+    stratum: missing-slice
+    prompt: What is the preempt-quorum token?
+    gold: "preempt-quorum 2/3"
+    expected_path: docs/decisions/001-preempt-lease.md
+  - id: ms-14
+    stratum: missing-slice
+    prompt: What is the fence-ttl token?
+    gold: "fence-ttl 27s"
+    expected_path: docs/decisions/001-preempt-lease.md
