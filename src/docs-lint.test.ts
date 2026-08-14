@@ -79,6 +79,7 @@ test("this repo's own map and docs have no dangling pointers", async () => {
       ".cursor/skills/sdd/SKILL.md",
       ".cursor/skills/sdd/occasion.md",
       ".cursor/skills/sdd/promote.md",
+      ".cursor/skills/sdd/distill.md",
       ".cursor/skills/sdd/map.md",
       ".cursor/skills/sdd/owners.md",
     ],

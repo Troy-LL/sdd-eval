@@ -13,6 +13,7 @@ const DOCS = [
   ".cursor/skills/sdd/SKILL.md",
   ".cursor/skills/sdd/occasion.md",
   ".cursor/skills/sdd/promote.md",
+  ".cursor/skills/sdd/distill.md",
   ".cursor/skills/sdd/map.md",
   ".cursor/skills/sdd/owners.md",
 ] as const;

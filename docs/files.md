@@ -150,7 +150,7 @@ Human changelog for SDK consumers: `CHANGELOG.md` at root. It is for people and 
 
 **Where:** `.agents/skills/<id>/SKILL.md` or the host’s skill root. Optional `references/` beside the skill.
 
-This guidebook ships one addressable skill: [`sdd`](../.cursor/skills/sdd/SKILL.md) (`/sdd`). Occasion and promote are files it opens, not extra skills. This page is the catalog. Product maps do not bullet it.
+This guidebook ships one addressable skill: [`sdd`](../.cursor/skills/sdd/SKILL.md) (`/sdd`). Occasion, promote, and distill are files it opens, not extra skills. This page is the catalog. Product maps do not bullet it.
 
 **When:** you keep pasting the same checklist, or a map section became a procedure that is only sometimes needed (debug this service, run this eval, ship this package).
 
