@@ -27,6 +27,7 @@ test("tasks yaml has no stored diagnoses and no extra treatments", async () => {
 test("docs/eval.md stays the KEEP rule and does not mention cratewake/03034964/fixtures/product/microbench", async () => {
   const evalMd = await readFile(path.join(ROOT, "docs", "eval.md"), "utf8");
   assert.match(evalMd, /\$call1.*=.*billed \$ through the first scored answer/s);
+  assert.match(evalMd, /provider's billed buckets \(OpenAI or Anthropic\)/);
   assert.match(evalMd, /n_missing ≥ 10, or ≥ 25% of n/);
   assert.match(evalMd, /Prefix-gold n ≥ 40 paired/);
   assert.match(evalMd, /## W3 — cites vs gold/);
@@ -37,4 +38,11 @@ test("docs/eval.md stays the KEEP rule and does not mention cratewake/03034964/f
   assert.doesNotMatch(evalMd, /microbench/i);
   assert.doesNotMatch(evalMd, /trial 1 KEEP/i);
   assert.doesNotMatch(evalMd, /KEEP trial 1/i);
+});
+
+test("README has OpenAI run line and stays a microbench, not KEEP", async () => {
+  const readme = await readFile(path.join(ROOT, "README.md"), "utf8");
+  assert.match(readme, /OPENAI_API_KEY/);
+  assert.match(readme, /microbench/i);
+  assert.doesNotMatch(readme, /trial 1 KEEP/i);
 });

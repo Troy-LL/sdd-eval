@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  bucketsFromOpenAI,
   call1_dollars,
   cap_obey,
   cites_ok,
   extraFileCap,
   gold_ok,
+  GPT_4O_MINI_CACHED_INPUT_PER_TOKEN,
+  GPT_4O_MINI_INPUT_PER_TOKEN,
+  GPT_4O_MINI_OUTPUT_PER_TOKEN,
+  GPT_4O_MINI_RATES,
   missingSliceFloor,
   task_success,
   type Observation,
@@ -110,6 +115,59 @@ test("$call1 uses provider buckets; does not infer hit/miss", () => {
     { write_5m: 3.75e-6, write_1h: 6e-6, read: 0.3e-6, uncached: 3e-6, output: 15e-6 },
   );
   assert.equal(dollars, 1000 * 3.75e-6 + 2000 * 0.3e-6 + 3000 * 3e-6 + 400 * 15e-6);
+});
+
+test("$call1 from OpenAI-shaped buckets; cached_tokens is not cache_creation", () => {
+  const usage = bucketsFromOpenAI({
+    prompt_tokens: 5000,
+    completion_tokens: 200,
+    prompt_tokens_details: { cached_tokens: 4000 },
+  });
+  assert.deepEqual(Object.keys(usage).sort(), ["cached_tokens", "completion_tokens", "prompt_tokens"]);
+  assert.equal("cache_creation_input_tokens" in usage, false);
+  assert.equal(usage.cached_tokens, 4000);
+  const dollars = call1_dollars(usage, GPT_4O_MINI_RATES);
+  assert.equal(
+    dollars,
+    1000 * GPT_4O_MINI_INPUT_PER_TOKEN +
+      4000 * GPT_4O_MINI_CACHED_INPUT_PER_TOKEN +
+      200 * GPT_4O_MINI_OUTPUT_PER_TOKEN,
+  );
+});
+
+test("OpenAI cached_tokens never maps into Anthropic cache_creation", () => {
+  const fromDetails = bucketsFromOpenAI({
+    prompt_tokens: 1000,
+    completion_tokens: 0,
+    cached_tokens: 999,
+    cache_creation_input_tokens: 999,
+    prompt_tokens_details: { cached_tokens: 800 },
+  });
+  const fromTop = bucketsFromOpenAI({
+    prompt_tokens: 1000,
+    completion_tokens: 10,
+    cached_tokens: 400,
+  });
+  const missing = bucketsFromOpenAI({ prompt_tokens: 100, completion_tokens: 5 });
+  for (const u of [fromDetails, fromTop, missing]) {
+    assert.equal("cache_creation_input_tokens" in u, false);
+    assert.equal("cache_read_input_tokens" in u, false);
+  }
+  assert.equal(fromDetails.cached_tokens, 800);
+  assert.equal(fromTop.cached_tokens, 400);
+  assert.equal(missing.cached_tokens, 0);
+  const openaiDollars = call1_dollars(fromDetails, GPT_4O_MINI_RATES);
+  const asAnthropicCreate = call1_dollars(
+    {
+      cache_creation_input_tokens: fromDetails.cached_tokens,
+      cache_read_input_tokens: 0,
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_ttl: "5m",
+    },
+    { write_5m: 3.75e-6, write_1h: 6e-6, read: 0.3e-6, uncached: 3e-6, output: 15e-6 },
+  );
+  assert.notEqual(openaiDollars, asAnthropicCreate);
 });
 
 test("missingSliceFloor is max(10, 25% of n)", () => {

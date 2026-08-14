@@ -40,13 +40,14 @@ npm run check
 
 `npm run check` is the CI stub: gold exists, n counts, map silence. It does not call a model. It does not print billed `$`. It does not score KEEP.
 
-Live, only if you have a key:
+Live, only if you have a key. Prefer OpenAI when `OPENAI_API_KEY` is set (default model `gpt-4o-mini`; override with `OPENAI_MODEL`). Anthropic still works if that key is absent. Either path is a microbench. Not KEEP.
 
 ```bash
+OPENAI_API_KEY=... npm run eval
 ANTHROPIC_API_KEY=... npm run eval
 ```
 
-That path logs provider usage buckets and derives `$call1` from the formula in [`docs/eval.md`](docs/eval.md). No key, no `$`. Do not commit `evals/`. Do not read a local JSONL as KEEP.
+That path logs the model name and the provider's billed usage buckets, then derives `$call1` from published rates. OpenAI logs `prompt_tokens`, `completion_tokens`, and `cached_tokens` when present. It does not invent Anthropic `cache_creation_input_tokens` or infer hit/miss. No key, no `$`. Do not commit `evals/`. Do not read a local JSONL as KEEP.
 
 ## What this repo may contain
 
