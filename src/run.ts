@@ -4,14 +4,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import {
+  bucketsFromOpenAI,
   call1_dollars,
   cap_obey,
   cites_ok,
   extraFileCap,
   gold_ok,
+  GPT_4O_MINI_RATES,
+  isOpenAIUsage,
   task_success,
   type Arm,
   type Observation,
+  type OpenAIRates,
+  type OpenAIUsageBuckets,
   type Rates,
   type Task,
   type UsageBuckets,
@@ -65,6 +70,11 @@ const RATES: Record<string, Rates> = {
     uncached: 1e-6,
     output: 5e-6,
   },
+};
+
+const OPENAI_RATES: Record<string, OpenAIRates> = {
+  "gpt-4o-mini": GPT_4O_MINI_RATES,
+  "gpt-4o-mini-2024-07-18": GPT_4O_MINI_RATES,
 };
 
 export function sha256File(bytes: Uint8Array): string {
@@ -170,10 +180,16 @@ export async function check(opts?: { tasksRaw?: string; evalMd?: string; readme?
   if (!/\$call1.*=.*billed \$ through the first scored answer/s.test(evalMd)) {
     throw new Error("docs/eval.md lost the $call1 definition");
   }
+  if (!/provider's billed buckets \(OpenAI or Anthropic\)/.test(evalMd)) {
+    throw new Error("docs/eval.md $ must be provider billed buckets (OpenAI or Anthropic)");
+  }
   if (!/## W3 — cites vs gold/.test(evalMd)) throw new Error("docs/eval.md lost W3");
   if (!/microbench/i.test(readme)) throw new Error("README must label this checkout a microbench");
   if (!readme.includes(sha256)) throw new Error("README must carry the microbench tasks hash (not a KEEP pin)");
   if (/trial 1 KEEP/i.test(readme)) throw new Error("do not write trial 1 KEEP");
+  if (!readme.includes("OPENAI_API_KEY")) {
+    throw new Error("README must say how to run with OPENAI_API_KEY");
+  }
 
   return { n, prefixGold: prefixGold.length, missingSlice: missingSlice.length, sha256 };
 }
@@ -187,11 +203,39 @@ function parseCiteAnswer(text: string): { cited_path: string | null; answer: str
   };
 }
 
-function addUsage(into: UsageBuckets, part: UsageBuckets): void {
-  into.cache_creation_input_tokens += part.cache_creation_input_tokens;
-  into.cache_read_input_tokens += part.cache_read_input_tokens;
-  into.input_tokens += part.input_tokens;
-  into.output_tokens += part.output_tokens;
+type Provider = "openai" | "anthropic";
+type Usage = UsageBuckets | OpenAIUsageBuckets;
+type ToolUse = { id: string; name: string; input: Record<string, unknown> };
+type UserBlock = { text: string; cache?: boolean };
+type HistoryItem =
+  | { role: "user"; blocks: UserBlock[] }
+  | { role: "assistant"; text: string; toolUses: ToolUse[]; anthropicContent?: AnthropicContent[] }
+  | { role: "tool_results"; results: { id: string; content: string }[] };
+
+function emptyUsage(provider: Provider, ttl: "5m" | "1h"): Usage {
+  if (provider === "openai") return { prompt_tokens: 0, completion_tokens: 0, cached_tokens: 0 };
+  return {
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: 0,
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_ttl: ttl,
+  };
+}
+
+function addUsage(into: Usage, part: Usage): void {
+  if (isOpenAIUsage(into) && isOpenAIUsage(part)) {
+    into.prompt_tokens += part.prompt_tokens;
+    into.completion_tokens += part.completion_tokens;
+    into.cached_tokens += part.cached_tokens;
+    return;
+  }
+  if (!isOpenAIUsage(into) && !isOpenAIUsage(part)) {
+    into.cache_creation_input_tokens += part.cache_creation_input_tokens;
+    into.cache_read_input_tokens += part.cache_read_input_tokens;
+    into.input_tokens += part.input_tokens;
+    into.output_tokens += part.output_tokens;
+  }
 }
 
 function bucketsFromAnthropic(usage: Record<string, unknown> | undefined, ttl: "5m" | "1h"): UsageBuckets {
@@ -228,39 +272,187 @@ async function anthropic(apiKey: string, body: unknown): Promise<{ content: Anth
   return { content: json.content ?? [], usage: json.usage ?? {} };
 }
 
+type OpenAIToolCall = { id: string; function?: { name?: string; arguments?: string } };
+type OpenAIMessage = { content?: string | null; tool_calls?: OpenAIToolCall[] };
+
+async function openai(
+  apiKey: string,
+  body: unknown,
+): Promise<{ message: OpenAIMessage; usage: Record<string, unknown> }> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json()) as {
+    choices?: { message?: OpenAIMessage }[];
+    usage?: Record<string, unknown>;
+    error?: { message?: string };
+  };
+  if (!res.ok) throw new Error(json.error?.message ?? `openai HTTP ${res.status}`);
+  return { message: json.choices?.[0]?.message ?? {}, usage: json.usage ?? {} };
+}
+
 const INSTRUCT = `Cite one path. Answer with the exact token from that file.
 Format:
 CITE: relative/path.md
 ANSWER: token`;
 
+const ANTHROPIC_TOOLS = [
+  {
+    name: "read_file",
+    description: "Read one allowlisted fixture file. Path relative to fixture root.",
+    input_schema: {
+      type: "object",
+      properties: { path: { type: "string" } },
+      required: ["path"],
+    },
+  },
+];
+
+const OPENAI_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "read_file",
+      description: "Read one allowlisted fixture file. Path relative to fixture root.",
+      parameters: {
+        type: "object",
+        properties: { path: { type: "string" } },
+        required: ["path"],
+      },
+    },
+  },
+];
+
+function parseOpenAIInput(argumentsJson: string | undefined): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(argumentsJson ?? "{}") as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function completeRound(opts: {
+  provider: Provider;
+  apiKey: string;
+  model: string;
+  history: HistoryItem[];
+  withTools: boolean;
+  maxTokens: number;
+  ttl: "5m" | "1h";
+}): Promise<{ text: string; toolUses: ToolUse[]; usage: Usage; anthropicContent?: AnthropicContent[] }> {
+  if (opts.provider === "openai") {
+    const messages: unknown[] = [{ role: "system", content: INSTRUCT }];
+    for (const item of opts.history) {
+      if (item.role === "user") {
+        messages.push({ role: "user", content: item.blocks.map((b) => b.text).join("\n\n") });
+      } else if (item.role === "assistant") {
+        const msg: Record<string, unknown> = { role: "assistant", content: item.text || null };
+        if (item.toolUses.length) {
+          msg.tool_calls = item.toolUses.map((tu) => ({
+            id: tu.id,
+            type: "function",
+            function: { name: tu.name, arguments: JSON.stringify(tu.input) },
+          }));
+        }
+        messages.push(msg);
+      } else {
+        for (const r of item.results) {
+          messages.push({ role: "tool", tool_call_id: r.id, content: r.content });
+        }
+      }
+    }
+    const body: Record<string, unknown> = { model: opts.model, max_tokens: opts.maxTokens, messages };
+    if (opts.withTools) body.tools = OPENAI_TOOLS;
+    const resp = await openai(opts.apiKey, body);
+    const toolUses: ToolUse[] = (resp.message.tool_calls ?? []).map((tc) => ({
+      id: tc.id,
+      name: tc.function?.name ?? "read_file",
+      input: parseOpenAIInput(tc.function?.arguments),
+    }));
+    return {
+      text: resp.message.content ?? "",
+      toolUses,
+      usage: bucketsFromOpenAI(resp.usage),
+    };
+  }
+
+  const messages: unknown[] = [];
+  for (const item of opts.history) {
+    if (item.role === "user") {
+      messages.push({
+        role: "user",
+        content: item.blocks.map((b) => ({
+          type: "text",
+          text: b.text,
+          ...(b.cache ? { cache_control: { type: "ephemeral" as const } } : {}),
+        })),
+      });
+    } else if (item.role === "assistant") {
+      messages.push({
+        role: "assistant",
+        content: item.anthropicContent ?? [
+          ...(item.text ? [{ type: "text" as const, text: item.text }] : []),
+          ...item.toolUses.map((tu) => ({
+            type: "tool_use" as const,
+            id: tu.id,
+            name: tu.name,
+            input: tu.input,
+          })),
+        ],
+      });
+    } else {
+      messages.push({
+        role: "user",
+        content: item.results.map((r) => ({
+          type: "tool_result",
+          tool_use_id: r.id,
+          content: r.content,
+        })),
+      });
+    }
+  }
+  const body: Record<string, unknown> = {
+    model: opts.model,
+    max_tokens: opts.maxTokens,
+    system: [{ type: "text", text: INSTRUCT, cache_control: { type: "ephemeral" } }],
+    messages,
+  };
+  if (opts.withTools) body.tools = ANTHROPIC_TOOLS;
+  const resp = await anthropic(opts.apiKey, body);
+  const toolUses = resp.content
+    .filter((c): c is Extract<AnthropicContent, { type: "tool_use" }> => c.type === "tool_use")
+    .map((c) => ({ id: c.id, name: c.name, input: c.input }));
+  return {
+    text: resp.content.filter((c) => c.type === "text").map((c) => c.text).join("\n"),
+    toolUses,
+    usage: bucketsFromAnthropic(resp.usage, opts.ttl),
+    anthropicContent: resp.content,
+  };
+}
+
 async function runArm(opts: {
+  provider: Provider;
   apiKey: string;
   model: string;
   task: Task;
   arm: Arm;
 }): Promise<Observation> {
   const ttl: "5m" | "1h" = "5m";
-  const usage: UsageBuckets = {
-    cache_creation_input_tokens: 0,
-    cache_read_input_tokens: 0,
-    input_tokens: 0,
-    output_tokens: 0,
-    cache_ttl: ttl,
-  };
+  const usage = emptyUsage(opts.provider, ttl);
   const loaded = new Set<string>();
   const extraCap = extraFileCap(EVAL_IN_PLAY);
-
-  const tools = [
-    {
-      name: "read_file",
-      description: "Read one allowlisted fixture file. Path relative to fixture root.",
-      input_schema: {
-        type: "object",
-        properties: { path: { type: "string" } },
-        required: ["path"],
-      },
-    },
-  ];
+  const roundOpts = {
+    provider: opts.provider,
+    apiKey: opts.apiKey,
+    model: opts.model,
+    ttl,
+  };
 
   if (opts.arm === "L0") {
     const prefix = await Promise.all(
@@ -271,23 +463,22 @@ async function runArm(opts: {
     );
     for (const p of PREFIX) loaded.add(p);
     for (const p of DUMP_EXTRAS) loaded.add(p);
-    const resp = await anthropic(opts.apiKey, {
-      model: opts.model,
-      max_tokens: 256,
-      system: [{ type: "text", text: INSTRUCT, cache_control: { type: "ephemeral" } }],
-      messages: [
+    const resp = await completeRound({
+      ...roundOpts,
+      history: [
         {
           role: "user",
-          content: [
-            { type: "text", text: prefix.join("\n\n"), cache_control: { type: "ephemeral" } },
-            { type: "text", text: `${extras.join("\n\n")}\n\nTASK ${opts.task.id}: ${opts.task.prompt}` },
+          blocks: [
+            { text: prefix.join("\n\n"), cache: true },
+            { text: `${extras.join("\n\n")}\n\nTASK ${opts.task.id}: ${opts.task.prompt}` },
           ],
         },
       ],
+      withTools: false,
+      maxTokens: 256,
     });
-    addUsage(usage, bucketsFromAnthropic(resp.usage, ttl));
-    const text = resp.content.filter((c) => c.type === "text").map((c) => c.text).join("\n");
-    const parsed = parseCiteAnswer(text);
+    addUsage(usage, resp.usage);
+    const parsed = parseCiteAnswer(resp.text);
     return {
       task_id: opts.task.id,
       arm: "L0",
@@ -301,13 +492,12 @@ async function runArm(opts: {
 
   loaded.add("AGENTS.md");
   const agents = await readFixture("AGENTS.md");
-  const messages: unknown[] = [
+  const history: HistoryItem[] = [
     {
       role: "user",
-      content: [
-        { type: "text", text: `## AGENTS.md\n${agents}`, cache_control: { type: "ephemeral" } },
+      blocks: [
+        { text: `## AGENTS.md\n${agents}`, cache: true },
         {
-          type: "text",
           text: `L1 cap: AGENTS.md + at most ${extraCap} files (eval.md in play).\n\nTASK ${opts.task.id}: ${opts.task.prompt}`,
         },
       ],
@@ -316,21 +506,23 @@ async function runArm(opts: {
 
   let text = "";
   for (let round = 0; round < 8; round++) {
-    const resp = await anthropic(opts.apiKey, {
-      model: opts.model,
-      max_tokens: 512,
-      tools,
-      system: [{ type: "text", text: INSTRUCT, cache_control: { type: "ephemeral" } }],
-      messages,
+    const resp = await completeRound({
+      ...roundOpts,
+      history,
+      withTools: true,
+      maxTokens: 512,
     });
-    addUsage(usage, bucketsFromAnthropic(resp.usage, ttl));
-    const toolUses = resp.content.filter((c) => c.type === "tool_use");
-    const texts = resp.content.filter((c) => c.type === "text").map((c) => c.text);
-    text = texts.join("\n");
-    if (toolUses.length === 0) break;
-    (messages as object[]).push({ role: "assistant", content: resp.content });
-    const toolResults = [];
-    for (const tu of toolUses) {
+    addUsage(usage, resp.usage);
+    text = resp.text;
+    if (resp.toolUses.length === 0) break;
+    history.push({
+      role: "assistant",
+      text: resp.text,
+      toolUses: resp.toolUses,
+      anthropicContent: resp.anthropicContent,
+    });
+    const results = [];
+    for (const tu of resp.toolUses) {
       const rel = String(tu.input.path ?? "").replace(/^\.\//, "");
       loaded.add(rel);
       let content: string;
@@ -339,9 +531,9 @@ async function runArm(opts: {
       } catch {
         content = `missing: ${rel}`;
       }
-      toolResults.push({ type: "tool_result", tool_use_id: tu.id, content });
+      results.push({ id: tu.id, content });
     }
-    (messages as object[]).push({ role: "user", content: toolResults });
+    history.push({ role: "tool_results", results });
   }
 
   const parsed = parseCiteAnswer(text);
@@ -375,22 +567,56 @@ function derive(obs: Observation, task: Task, model: string): {
   task_success: boolean;
   call1_dollars: number | null;
 } {
-  const rates = RATES[model];
+  let dollars: number | null = null;
+  if (obs.usage) {
+    if (isOpenAIUsage(obs.usage)) {
+      const rates = OPENAI_RATES[model];
+      dollars = rates ? call1_dollars(obs.usage, rates) : null;
+    } else {
+      const rates = RATES[model];
+      dollars = rates ? call1_dollars(obs.usage, rates) : null;
+    }
+  }
   return {
     cap_obey: cap_obey(obs, ALLOWLIST),
     cites_ok: cites_ok(obs, task),
     gold_ok: gold_ok(obs.answer, task.gold),
     task_success: task_success(obs, task, ALLOWLIST),
-    call1_dollars: obs.usage && rates ? call1_dollars(obs.usage, rates) : null,
+    call1_dollars: dollars,
   };
 }
 
-async function runLive(): Promise<void> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("no ANTHROPIC_API_KEY; stub path is `npm run check`. will not fake billed $");
+function usageLog(obs: Observation): string {
+  if (!obs.usage) return "";
+  if (isOpenAIUsage(obs.usage)) {
+    return ` prompt_tokens=${obs.usage.prompt_tokens} completion_tokens=${obs.usage.completion_tokens} cached_tokens=${obs.usage.cached_tokens}`;
   }
-  const model = process.env.MODEL ?? "claude-haiku-4-5-20251001";
+  return (
+    ` cache_creation_input_tokens=${obs.usage.cache_creation_input_tokens}` +
+    ` cache_read_input_tokens=${obs.usage.cache_read_input_tokens}` +
+    ` input_tokens=${obs.usage.input_tokens}` +
+    ` output_tokens=${obs.usage.output_tokens}`
+  );
+}
+
+async function runLive(): Promise<void> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  let provider: Provider;
+  let apiKey: string;
+  let model: string;
+  if (openaiKey) {
+    provider = "openai";
+    apiKey = openaiKey;
+    model = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+  } else if (anthropicKey) {
+    provider = "anthropic";
+    apiKey = anthropicKey;
+    model = process.env.MODEL ?? "claude-haiku-4-5-20251001";
+  } else {
+    throw new Error("no OPENAI_API_KEY or ANTHROPIC_API_KEY; stub path is `npm run check`. will not fake billed $");
+  }
+  console.log(`model=${model}`);
   const tasks = loadTasks(await readFile(TASKS_PATH, "utf8"));
   const outDir = path.join(ROOT, "evals");
   await mkdir(outDir, { recursive: true });
@@ -398,12 +624,13 @@ async function runLive(): Promise<void> {
   const lines: string[] = [];
   for (const task of tasks) {
     for (const arm of ["L0", "L1"] as const) {
-      const obs = await runArm({ apiKey, model, task, arm });
+      const obs = await runArm({ provider, apiKey, model, task, arm });
       lines.push(JSON.stringify(observationLine(obs)));
       const d = derive(obs, task, model);
       console.log(
         `${task.id} ${arm} gold=${d.gold_ok} cap=${d.cap_obey} success=${d.task_success}` +
-          (d.call1_dollars !== null ? ` $call1=${d.call1_dollars}` : " $call1=omitted"),
+          (d.call1_dollars !== null ? ` $call1=${d.call1_dollars}` : " $call1=omitted") +
+          usageLog(obs),
       );
     }
   }

@@ -17,6 +17,13 @@ export type UsageBuckets = {
   cache_ttl: "5m" | "1h";
 };
 
+/** Native OpenAI usage fields. Not Anthropic create/read/uncached. */
+export type OpenAIUsageBuckets = {
+  prompt_tokens: number;
+  completion_tokens: number;
+  cached_tokens: number;
+};
+
 export type Observation = {
   task_id: string;
   arm: Arm;
@@ -24,7 +31,7 @@ export type Observation = {
   cited_path: string | null;
   loaded_paths: string[];
   eval_in_play: boolean;
-  usage: UsageBuckets | null;
+  usage: UsageBuckets | OpenAIUsageBuckets | null;
 };
 
 export type Rates = {
@@ -34,6 +41,45 @@ export type Rates = {
   uncached: number;
   output: number;
 };
+
+export type OpenAIRates = {
+  input: number;
+  cached_input: number;
+  output: number;
+};
+
+// OpenAI published gpt-4o-mini rates, $ per token. 2026-08-14.
+// Source: https://platform.openai.com/docs/pricing (also https://openai.com/api/pricing)
+export const GPT_4O_MINI_INPUT_PER_TOKEN = 0.15 / 1_000_000;
+export const GPT_4O_MINI_CACHED_INPUT_PER_TOKEN = 0.075 / 1_000_000;
+export const GPT_4O_MINI_OUTPUT_PER_TOKEN = 0.6 / 1_000_000;
+
+export const GPT_4O_MINI_RATES: OpenAIRates = {
+  input: GPT_4O_MINI_INPUT_PER_TOKEN,
+  cached_input: GPT_4O_MINI_CACHED_INPUT_PER_TOKEN,
+  output: GPT_4O_MINI_OUTPUT_PER_TOKEN,
+};
+
+export function isOpenAIUsage(
+  usage: UsageBuckets | OpenAIUsageBuckets,
+): usage is OpenAIUsageBuckets {
+  return "prompt_tokens" in usage;
+}
+
+/** Copy billed OpenAI fields. Do not invent Anthropic cache_creation_input_tokens. */
+export function bucketsFromOpenAI(usage: Record<string, unknown> | undefined): OpenAIUsageBuckets {
+  const details = usage?.prompt_tokens_details;
+  const cachedFromDetails =
+    typeof details === "object" && details !== null && "cached_tokens" in details
+      ? Number((details as { cached_tokens?: unknown }).cached_tokens) || 0
+      : null;
+  const cachedTop = usage && "cached_tokens" in usage ? Number(usage.cached_tokens) || 0 : 0;
+  return {
+    prompt_tokens: Number(usage?.prompt_tokens) || 0,
+    completion_tokens: Number(usage?.completion_tokens) || 0,
+    cached_tokens: cachedFromDetails ?? cachedTop,
+  };
+}
 
 export function extraFileCap(evalInPlay: boolean): number {
   return evalInPlay ? 3 : 2;
@@ -58,13 +104,26 @@ export function task_success(obs: Observation, task: Task, allowlist: ReadonlySe
   return gold_ok(obs.answer, task.gold) && cap_obey(obs, allowlist);
 }
 
-export function call1_dollars(usage: UsageBuckets, rates: Rates): number {
-  const write = usage.cache_ttl === "1h" ? rates.write_1h : rates.write_5m;
+export function call1_dollars(usage: UsageBuckets, rates: Rates): number;
+export function call1_dollars(usage: OpenAIUsageBuckets, rates: OpenAIRates): number;
+export function call1_dollars(
+  usage: UsageBuckets | OpenAIUsageBuckets,
+  rates: Rates | OpenAIRates,
+): number {
+  if (isOpenAIUsage(usage)) {
+    const r = rates as OpenAIRates;
+    // prompt_tokens includes cached_tokens. Use the reported cached bucket; do not infer hit/miss.
+    const cached = usage.cached_tokens;
+    const uncached = Math.max(0, usage.prompt_tokens - cached);
+    return uncached * r.input + cached * r.cached_input + usage.completion_tokens * r.output;
+  }
+  const r = rates as Rates;
+  const write = usage.cache_ttl === "1h" ? r.write_1h : r.write_5m;
   return (
     usage.cache_creation_input_tokens * write +
-    usage.cache_read_input_tokens * rates.read +
-    usage.input_tokens * rates.uncached +
-    usage.output_tokens * rates.output
+    usage.cache_read_input_tokens * r.read +
+    usage.input_tokens * r.uncached +
+    usage.output_tokens * r.output
   );
 }
 

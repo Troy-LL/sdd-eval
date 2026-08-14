@@ -18,7 +18,7 @@ L1 cap violation ⇒ `task_success` false even if the gold checker would pass. T
 
 L1 all-trials median `$call1` strictly < L0 all-trials median `$call1` (same tasks, same model).
 
-`$ = create×write_rate(ttl) + read×$1 + uncached×input_rate + output×output_rate` from provider buckets. Do not infer hit/miss.
+`$ = create×write_rate(ttl) + read×$1 + uncached×input_rate + output×output_rate` from provider buckets. `$` is from the provider's billed buckets (OpenAI or Anthropic). Do not infer hit/miss.
 
 Call-2 cache claims require a shared-prefix allowlisted file to change. Unverified pair ⇒ no KEEP on `$call2plus`.
 
