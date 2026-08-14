@@ -24,6 +24,8 @@ export type OpenAIUsageBuckets = {
   cached_tokens: number;
 };
 
+export type Provider = "openai" | "anthropic";
+
 export type Observation = {
   task_id: string;
   arm: Arm;
@@ -32,6 +34,8 @@ export type Observation = {
   loaded_paths: string[];
   eval_in_play: boolean;
   usage: UsageBuckets | OpenAIUsageBuckets | null;
+  model: string;
+  provider: Provider;
 };
 
 export type Rates = {
