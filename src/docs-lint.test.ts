@@ -70,7 +70,13 @@ test("this repo's own map and docs have no dangling pointers", async () => {
   const issues = await lintDocs({
     root: ROOT,
     map: "AGENTS.md",
-    docs: ["README.md", "TROYS-SDD.md", "docs/eval.md"],
+    docs: [
+      "README.md",
+      "docs/architecture.md",
+      "docs/files.md",
+      "docs/decisions/001-intent-in-the-file-that-changed.md",
+      "references/sources.md",
+    ],
   });
   assert.deepEqual(issues, [], formatIssues(issues));
 });

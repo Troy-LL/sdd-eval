@@ -1,20 +1,14 @@
 {
-  "name": "sdd-eval",
+  "name": "sdd",
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "tsx src/run.ts check",
-    "lint:docs": "tsx src/run.ts lint-docs",
-    "eval:claude-wave2": "tsx src/run.ts claude-wave2",
-    "eval:claude-wave3": "tsx src/run.ts claude-wave3",
-    "eval:claude-wave4": "tsx src/run.ts claude-wave4",
+    "check": "tsx src/check.ts",
+    "lint:docs": "tsx src/check.ts",
     "test": "tsx --test src/*.test.ts"
   },
   "engines": {
     "node": ">=22"
-  },
-  "dependencies": {
-    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",

@@ -2,8 +2,7 @@ import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
- * Two dangling-pointer checks a product repo can copy. Gold-token uniqueness
- * is not here: check() already enforces one-fact-one-file on the fixture.
+ * Two dangling-pointer checks a product repo can copy.
  *
  * Deliberately not "every backticked path must exist". A handbook is full of
  * paths you must NOT create (`docs/api.md`, `llms.txt`), so that rule is all

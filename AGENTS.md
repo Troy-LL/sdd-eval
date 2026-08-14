@@ -1,14 +1,15 @@
-# sdd-eval
+# Troy's SDD
 
-Map only.
+Map only. This repo is the guidebook. Do not paste it into a product.
 
-- `TROYS-SDD.md` — Troy's SDD handbook. Names, rules, findings. Not a KEEP winner.
-- `docs/eval.md` — KEEP winner rule for a real product. No KEEP subject pinned.
-- `fixtures/product/` — microbench fixture (cratewake). Exists to be measured. Not a KEEP subject.
-- `sdd-eval-tasks.yaml` — microbench tasks. Not a KEEP pin.
-- `src/run.ts` — harness. This code is the architecture of the bench.
-- `src/docs-lint.ts` — map bullets and links must resolve. `npm run lint:docs`.
-- `hooks/keep-inside-root.mjs` — deny writes and shell that leave this root.
-- `hooks/docs-load.mjs` — bench probe (L1h). Do not install it anywhere.
+- `README.md` — who for, ladder, how to run this repo
+- `docs/architecture.md` — authoring vs load, executable spec, never-list
+- `docs/files.md` — occasion → maybe a file. Open when asking whether to create one. Not a checklist.
+- `docs/decisions/001-intent-in-the-file-that-changed.md` — keep the pause, kill the tree
+- `references/sources.md` — primary sources. Open when citing, not every turn
+- `src/docs-lint.ts` — map bullets and links must resolve. `npm run check`
+- `hooks/keep-inside-root.mjs` — deny writes and shell that leave this root
 
-No winner in this file.
+Load this file + at most 2. One extra file is enough. Skip unused.
+Pin order only when loading more than one: README → architecture → files → ADR.
+Cite paths. Do not paste.

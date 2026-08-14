@@ -7,13 +7,13 @@ import { decide, isInside, responseJson, shellOutsideRoot } from "../hooks/keep-
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("isInside is case-insensitive on the repo root", () => {
-  assert.equal(isInside(root, path.join(root, "TROYS-SDD.md")), true);
+  assert.equal(isInside(root, path.join(root, "README.md")), true);
   assert.equal(isInside(root, path.join(root, "..", "other")), false);
 });
 
 test("decide allows in-repo writes and npm scripts", () => {
   const ok = decide(
-    { tool_name: "Write", tool_input: { file_path: path.join(root, "TROYS-SDD.md") } },
+    { tool_name: "Write", tool_input: { file_path: path.join(root, "README.md") } },
     root,
   );
   assert.equal(ok.allow, true);
