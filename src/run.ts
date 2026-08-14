@@ -17,6 +17,7 @@ import {
   type Observation,
   type OpenAIRates,
   type OpenAIUsageBuckets,
+  type Provider,
   type Rates,
   type Task,
   type UsageBuckets,
@@ -203,7 +204,6 @@ function parseCiteAnswer(text: string): { cited_path: string | null; answer: str
   };
 }
 
-type Provider = "openai" | "anthropic";
 type Usage = UsageBuckets | OpenAIUsageBuckets;
 type ToolUse = { id: string; name: string; input: Record<string, unknown> };
 type UserBlock = { text: string; cache?: boolean };
@@ -487,6 +487,8 @@ async function runArm(opts: {
       loaded_paths: [...loaded],
       eval_in_play: EVAL_IN_PLAY,
       usage,
+      model: opts.model,
+      provider: opts.provider,
     };
   }
 
@@ -545,10 +547,12 @@ async function runArm(opts: {
     loaded_paths: [...loaded],
     eval_in_play: EVAL_IN_PLAY,
     usage,
+    model: opts.model,
+    provider: opts.provider,
   };
 }
 
-function observationLine(obs: Observation): Record<string, unknown> {
+export function observationLine(obs: Observation): Record<string, unknown> {
   return {
     task_id: obs.task_id,
     arm: obs.arm,
@@ -557,6 +561,8 @@ function observationLine(obs: Observation): Record<string, unknown> {
     loaded_paths: obs.loaded_paths,
     eval_in_play: obs.eval_in_play,
     usage: obs.usage,
+    model: obs.model,
+    provider: obs.provider,
   };
 }
 

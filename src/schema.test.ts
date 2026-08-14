@@ -16,6 +16,7 @@ import {
   type Observation,
   type Task,
 } from "./schema.ts";
+import { observationLine } from "./run.ts";
 
 const allowlist = new Set([
   "AGENTS.md",
@@ -43,6 +44,8 @@ function obs(partial: Partial<Observation>): Observation {
     loaded_paths: ["AGENTS.md", "README.md"],
     eval_in_play: true,
     usage: null,
+    model: "gpt-4o-mini",
+    provider: "openai",
     ...partial,
   };
 }
@@ -173,4 +176,19 @@ test("OpenAI cached_tokens never maps into Anthropic cache_creation", () => {
 test("missingSliceFloor is max(10, 25% of n)", () => {
   assert.equal(missingSliceFloor(40), 10);
   assert.equal(missingSliceFloor(80), 20);
+});
+
+test("serialized observation includes model", () => {
+  const line = observationLine(
+    obs({
+      model: "gpt-4o-mini",
+      provider: "openai",
+      usage: { prompt_tokens: 10, completion_tokens: 2, cached_tokens: 0 },
+    }),
+  );
+  const parsed = JSON.parse(JSON.stringify(line)) as { model?: unknown; provider?: unknown; usage?: object };
+  assert.equal(typeof parsed.model, "string");
+  assert.equal(parsed.model, "gpt-4o-mini");
+  assert.equal(parsed.provider, "openai");
+  assert.equal(parsed.usage && "cache_creation_input_tokens" in parsed.usage, false);
 });
