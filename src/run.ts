@@ -37,9 +37,9 @@ const MAP_NAMED = [
   "docs/eval.md",
 ] as const;
 
-const PREFIX = ["AGENTS.md", ...MAP_NAMED] as const;
+export const PREFIX = ["AGENTS.md", ...MAP_NAMED] as const;
 
-const DUMP_EXTRAS = [
+export const DUMP_EXTRAS = [
   "docs/changelog.md",
   "docs/ops-noise.md",
   "docs/decisions/001-preempt-lease.md",
@@ -298,7 +298,7 @@ export async function check(opts?: { tasksRaw?: string; evalMd?: string; readme?
   return { n, prefixGold: prefixGold.length, missingSlice: missingSlice.length, sha256 };
 }
 
-function parseCiteAnswer(text: string): { cited_path: string | null; answer: string } {
+export function parseCiteAnswer(text: string): { cited_path: string | null; answer: string } {
   const cite = text.match(/^CITE:\s*(.+)$/m);
   const ans = text.match(/^ANSWER:\s*(.+)$/m);
   return {
@@ -399,7 +399,7 @@ async function openai(
   return { message: json.choices?.[0]?.message ?? {}, usage: json.usage ?? {} };
 }
 
-const INSTRUCT = `Cite one path. Answer with the exact token from that file.
+export const INSTRUCT = `Cite one path. Answer with the exact token from that file.
 Format:
 CITE: relative/path.md
 ANSWER: token`;
@@ -770,6 +770,21 @@ async function main(): Promise<void> {
   }
   if (cmd === "run") {
     await runLive();
+    return;
+  }
+  if (cmd === "claude-pilot") {
+    const { runClaudePilot } = await import("./claude-cli.ts");
+    await runClaudePilot();
+    return;
+  }
+  if (cmd === "claude-wave2") {
+    const { runClaudeWave2 } = await import("./claude-cli.ts");
+    await runClaudeWave2();
+    return;
+  }
+  if (cmd === "claude-wave3") {
+    const { runClaudeWave3 } = await import("./claude-cli.ts");
+    await runClaudeWave3();
     return;
   }
   throw new Error(`unknown command ${cmd}`);

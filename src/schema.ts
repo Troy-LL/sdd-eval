@@ -24,7 +24,7 @@ export type OpenAIUsageBuckets = {
   cached_tokens: number;
 };
 
-export type Provider = "openai" | "anthropic";
+export type Provider = "openai" | "anthropic" | "claude-code";
 
 export type Observation = {
   task_id: string;

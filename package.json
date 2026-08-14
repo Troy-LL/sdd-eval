@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "check": "tsx src/run.ts check",
-    "eval": "tsx src/run.ts run",
+    "eval:claude-wave2": "tsx src/run.ts claude-wave2",
+    "eval:claude-wave3": "tsx src/run.ts claude-wave3",
     "test": "tsx --test src/*.test.ts"
   },
   "engines": {
