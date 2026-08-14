@@ -15,7 +15,7 @@ We will keep intent-before-code and throw away the per-feature tree.
 - Behaviour change → edit the allowlisted file that owns that fact.
 - Architecturally significant choice → one Nygard ADR, cited, never globbed.
 - Public contract → OpenAPI / proto / types in code. Architecture points. No markdown twin.
-- `plan.md` / `tasks.md` → scratch for migrations, audits, multi-week epics. Not the product.
+- `plan.md` / `tasks.md` / RFC drafts → scratch for migrations, audits, multi-week epics. Promote a fact into the owning file, then delete. Not the product.
 - This repo is the guidebook. It is not a KEEP trial. Do not copy it into a product.
 
 ## Consequences

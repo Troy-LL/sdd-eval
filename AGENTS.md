@@ -13,3 +13,5 @@ Map only. This repo is the guidebook. Do not paste it into a product.
 Load this file + at most 2. One extra file is enough. Skip unused.
 Pin order only when loading more than one: README → architecture → files → ADR.
 Cite paths. Do not paste.
+
+You may write under `scratch/` (gitignored) to think. Do not add it to this map. Promote a fact into the file that owns it, or delete.

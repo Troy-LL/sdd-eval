@@ -31,16 +31,10 @@ Promotion ladder: `scratch/` → (accepted) one ADR or a paragraph in the durabl
 | Model + scored probe | `docs/eval.md` | omit; tests own booleans |
 | Invisible-wrong decision | one `docs/decisions/NNN-*.md` | omit; map iff violation looks right |
 | Published contract | OpenAPI / proto / types in code | never `docs/api.md` |
-| Human SDK history | `CHANGELOG.md` | off the agent map |
-| Others contribute | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `LICENSE` | off the agent map |
-| Vulnerability disclosure | `SECURITY.md` | off the agent map |
-| Pager | runbook (skill or cited path) | not always-on |
-| Auditor | threat model | not always-on |
 | Same checklist, sometimes | `SKILL.md` | not a map essay |
 | Package with different commands | nested `AGENTS.md` | omit if it restates root |
-| Decision in flight (RFC, 6-pager, design week) | `scratch/` then ADR or delete | never Spec Kit `spec.md`/`plan.md`/`tasks.md` as the product |
-| Model card / dataset card (you ship a model or a dataset) | card next to the model; facts that are topology stay in architecture | do not fork `ai-architecture.md` |
-| Thinking / spike / ambiguous week | `scratch/` | gitignore; never map |
+| Decision in flight, spike, design week | `scratch/` then ADR or delete | never Spec Kit trees; never map scratch |
+| You ship weights or a dataset | card next to that artifact (Hub README) | not product `docs/`; not `ai-architecture.md` |
 
 ---
 
@@ -66,11 +60,13 @@ Promotion ladder: `scratch/` → (accepted) one ADR or a paragraph in the durabl
 
 **Why:** one predictable filename for agent context that would clutter the README. The map, not a second spec.
 
-**Inside:** one bullet per file that exists. The load ceiling. Commands and do-nots that differ from defaults. Pointers.
+**Inside:** one bullet per file that exists. The load ceiling. Commands and do-nots that differ from defaults. Pointers. Two lines that permit `scratch/` without listing it.
 
-**Never:** architecture pasted in. Limits copied from README. A job table of verbs. Files that do not exist. Dual-write of `CLAUDE.md`.
+**Never:** architecture pasted in. Limits copied from README. A job table of verbs. Files that do not exist. A clone of this map in `CLAUDE.md` / `GEMINI.md` / `.cursorrules`. Product maps do not bullet `files.md` (this guidebook’s map does, because the job here is authoring). `TOOLS.md`, `MCP.md`, `llms-full.txt`. `@import` of architecture — that is still always-on.
 
-**Load:** this file + at most 2, or + 3 if this turn needs `eval.md`. Ceiling, not a quota. Skip unused. Pin order only when loading more than one: README → architecture → design → eval. An ADR counts as one of the 2–3.
+**Hosts:** one `AGENTS.md`. `CLAUDE.md` is `@AGENTS.md` plus Claude-only deltas. Gemini: `context.fileName` → `AGENTS.md`, or the same import. Copilot Chat needs `.github/copilot-instructions.md` as a **stub**, not a second spec. Root `copilot-instructions.md` is dead. Live tools come from the host session, not from markdown.
+
+**Load:** this file + at most 2, or + 3 if this turn needs `eval.md`. Ceiling, not a quota. Skip unused. Pin order only when loading more than one: README → architecture → design → eval. An ADR counts as one of the 2–3. Opening scratch this turn spends a slot; it still does not earn a bullet.
 
 ---
 
@@ -193,28 +189,29 @@ There is no `docs/ai-architecture.md`. That job already has seats:
 
 A classifier with exact-match labels can stay a test. Do not create `eval.md` to describe assertions. Do not create `ai-architecture.md` so the AI feels special. If the topology paragraph is getting long, point at the graph in code and cut the recap — same rule as any other system.
 
+A **model card** (Mitchell; Hub README of a *model* repo) discloses a checkpoint: intended use, out-of-scope, subgroup metrics, license. A **datasheet** (Gebru; dataset-repo README) discloses a dataset version: collection, labeling, forbidden uses. Those attach to the artifact you published, not to this service’s topology and not to this repo’s gold command. Folding them into `architecture.md` or `eval.md` makes the file lie the day you pin new weights. Gold sets stay rigid. wandb reports and dated `evals/reports/` stay exploratory. Thinking models still need gold; they do not get a looser spec.
+
 ## Other jobs that earn a file
 
 Architecture, design, and eval are the default `docs/` trio. They are not the universe.
 
-**Earn a file** when the job exists and is not already a schema, a test, or one of the three:
+**Earn a file** when the job exists and is not already a schema, a test, or a row above:
 
-- Public contract → OpenAPI / proto / types (not `docs/api.md`)
 - Human SDK history → `CHANGELOG.md` at root, off the agent map
 - Pager → a runbook. Skill or cited path. Not always-on
 - Auditor → threat model / ASVS packet. Same load rule
-- Package with different commands → nested `AGENTS.md`
-- Same checklist you keep pasting → `SKILL.md`
 
 **Do not earn a file** for a new *name* of an old job. Graveyard (existence is not permission):
 
-`docs/data-model.md` · `docs/api.md` · `docs/ai-architecture.md` · `docs/README.md` · `docs/overview.md` · `SPEC.md` · per-feature `spec.md` / `plan.md` / `tasks.md` · `llms-full.txt` · `ROADMAP.md` as a wishlist · empty `GOVERNANCE.md` · `thinking.md` on the map · uppercase `ARCHITECTURE.md` next to `docs/architecture.md` · Diátaxis `tutorials/` `how-to/` `reference/` `explanation/` trees
+`docs/data-model.md` · `docs/api.md` · `docs/ai-architecture.md` · `docs/README.md` · `docs/overview.md` · `SPEC.md` · per-feature `spec.md` / `plan.md` / `tasks.md` · `openspec/specs/` as a twin of architecture · `llms-full.txt` · `TOOLS.md` · `MCP.md` · `PRODUCT.md` · `VISION.md` · `ROADMAP.md` as a wishlist · empty `GOVERNANCE.md` · `thinking.md` on the map · uppercase `ARCHITECTURE.md` / `DESIGN.md` next to `docs/` · Diátaxis `tutorials/` `how-to/` `reference/` `explanation/` trees
 
-Community files (`CONTRIBUTING`, `CODE_OF_CONDUCT`, `SECURITY`, `CHANGELOG`, `LICENSE`) are real jobs for **humans**. Keep them. Keep them **off** the agent map.
+GitHub health files (`CONTRIBUTING`, `CODE_OF_CONDUCT`, `SECURITY`, `LICENSE`, `SUPPORT`, `FUNDING.yml`) exist so the **host UI** can find them. Do not mint the community-profile set. `GOVERNANCE.md` waits for a real decision body. `CHANGELOG.md` is for upgraders, off the map. A runbook waits for a paging alert.
 
 ## Scratch that is not the product
 
 `plan.md` / `tasks.md` / RFC drafts for a migration, an audit, a multi-week epic, or a thinking-model design week: write them under `scratch/` (gitignored) or in the PR. Delete or promote when it merges. They are not the product.
+
+Promote by distill, never by renaming `thinking.md` → `architecture.md`. An RFC still marked proposed is not current topology — “Proposed: we will add a queue” in `architecture.md` is a lie. OpenSpec archive-into-`specs/` is a markdown twin, not promote. Sprint notes, retros, ticket dumps, and meeting notes die at merge.
 
 Runbooks and threat models: create them when the pager or the auditor exists. Load them as a skill or a cited path, not as always-on map body.
 

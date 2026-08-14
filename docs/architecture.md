@@ -43,9 +43,9 @@ Test: would an agent with **only this file** do a **different** job? If not, you
 3. That cap is a ceiling, not a quota. One extra file is enough.
 4. Cite the path. Do not paste the spec. Do not summarize architecture into the map.
 
-Nearest nested `AGENTS.md` wins in a monorepo. Do not stack three maps that copy each other. `CLAUDE.md`, if a tool requires it, imports `AGENTS.md`. It does not clone it.
+Nearest nested `AGENTS.md` wins in a monorepo. Do not stack three maps that copy each other. `CLAUDE.md`, if a tool requires it, imports `AGENTS.md`. It does not clone it. `@import` of `docs/architecture.md` is dump with an include. Gemini and Copilot get a pointer or a stub, not a second prose map. Product `AGENTS.md` does not bullet `files.md`.
 
-Procedures that are only sometimes true live in skills, not on the map. Path-scoped rules exist for file-type conventions. Unscoped rules that load every session are a second map.
+Procedures that are only sometimes true live in skills, not on the map. Path-scoped rules exist for file-type conventions. Unscoped rules that load every session are a second map. Scratch may exist so a thinking model can journal; it is never a map bullet. If you open it this turn, you spent a load slot.
 
 ## Executable spec
 
@@ -67,9 +67,9 @@ Point at the types file. Do not paste columns. Agents Read the schema path. They
 
 ## Never
 
-Do not add `docs/README.md` (second map). Do not add per-feature `spec.md` / `plan.md` / `tasks.md`. Do not add handwritten `docs/api.md` or `docs/data-model.md`. Do not add `llms-full.txt`. Do not scaffold empty `tutorials/` / `how-to/` / `reference/` / `explanation/` trees. Do not put this handbook in a product. Do not create empty shells for later.
+Do not add `docs/README.md` (second map). Do not add per-feature `spec.md` / `plan.md` / `tasks.md`. Do not add handwritten `docs/api.md` or `docs/data-model.md`. Do not add `llms-full.txt`, `TOOLS.md`, or `MCP.md`. Do not scaffold empty `tutorials/` / `how-to/` / `reference/` / `explanation/` trees. Do not put this handbook in a product. Do not create empty shells for later. Do not leave “Proposed: …” in `architecture.md`.
 
-`plan.md` / `tasks.md` may exist as **scratch** for a migration, an audit, or a multi-week epic. Delete them when it merges. They are not the product.
+`plan.md` / `tasks.md` / RFC drafts may exist as **scratch** for a migration, an audit, or a multi-week epic. Delete them when it merges. They are not the product.
 
 Dump still wins a small self-contained folder and a lexical needle. Index-then-drill wins once distractors and unnamed facts sit in a long haystack. Do not claim the cap is cheaper. Compact traces, not the spec.
 

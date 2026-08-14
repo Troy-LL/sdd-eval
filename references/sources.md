@@ -11,6 +11,8 @@ Primary pages this guidebook steals from. Open when citing. Do not dump them int
 - [llms.txt](https://llmstxt.org/) — small curated link index for *sites*, not a repo coding map
 - [Claude Code memory](https://code.claude.com/docs/en/memory) — CLAUDE.md under ~200 lines; import AGENTS.md; trim architecture the model can derive
 - [Cursor rules](https://cursor.com/docs/rules) — path-scoped vs always-on; do not copy the codebase into the map
+- [Gemini CLI GEMINI.md](https://geminicli.com/docs/cli/gemini-md/) — hierarchical memory; point `context.fileName` at AGENTS.md instead of cloning
+- [GitHub Copilot repository instructions](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions) — `.github/copilot-instructions.md` is the load path; keep it a stub
 
 ## Human docs
 
@@ -22,6 +24,9 @@ Primary pages this guidebook steals from. Open when citing. Do not dump them int
 - [C4 model](https://c4model.com/) — you do not need all four levels
 - [arc42](https://arc42.org/overview) — tailorable; travel light
 - [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — for humans, not machines
+- [GitHub — default community health files](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/creating-a-default-community-health-file) — filenames so the UI can find them, not a create-all set
+- [opensource.guide — governance](https://opensource.guide/leadership-and-governance/) — write it once you have a community, not at launch
+- [Google SRE — on-call](https://sre.google/workbook/on-call/) — a playbook entry pairs with a paging alert
 
 ## Contracts
 
@@ -31,6 +36,13 @@ Primary pages this guidebook steals from. Open when citing. Do not dump them int
 - [Open Data Contract Standard](https://bitol-io.github.io/open-data-contract-standard/v3.0.1/home/)
 - [Pact](https://docs.pact.io/) — contract from tests, not from a route table
 - [dbt data tests](https://docs.getdbt.com/docs/build/data-tests)
+
+## Models, cards, eval
+
+- Mitchell et al., Model Cards — [arXiv 1810.03993](https://arxiv.org/abs/1810.03993)
+- Gebru et al., Datasheets for Datasets — [arXiv 1803.09010](https://arxiv.org/abs/1803.09010)
+- [Hugging Face model cards](https://huggingface.co/docs/hub/en/model-cards) — Hub README of the *model* repo, not the app `docs/`
+- [OpenAI — Evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices) — gold + criteria; vibe-based evals are an anti-pattern
 
 ## Spec-driven (keep the pause, kill the tree)
 
