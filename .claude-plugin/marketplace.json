@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "troysdd",
+  "owner": {
+    "name": "Troy",
+    "url": "https://github.com/Troy-LL"
+  },
+  "description": "Troy's SDD: author product docs with /sdd; change code with /sdd-eng. Import the plugin, not this guidebook.",
+  "plugins": [
+    {
+      "name": "sdd",
+      "source": "./.cursor",
+      "description": "Author product docs with /sdd; walk a behavior change with /sdd-eng. Load stays on the product AGENTS.md.",
+      "homepage": "https://github.com/Troy-LL/troysdd",
+      "repository": "https://github.com/Troy-LL/troysdd",
+      "keywords": ["sdd", "spec", "agents", "skills"]
+    }
+  ]
+}

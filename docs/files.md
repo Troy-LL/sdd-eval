@@ -150,7 +150,7 @@ Human changelog for SDK consumers: `CHANGELOG.md` at root. It is for people and 
 
 **Where:** `.agents/skills/<id>/SKILL.md` or the host’s skill root. Optional `references/` beside the skill.
 
-This guidebook ships two addressable skills: [`sdd`](../.cursor/skills/sdd/SKILL.md) (`/sdd`) for authoring, [`sdd-eng`](../.cursor/skills/sdd-eng/SKILL.md) (`/sdd-eng`) for a behavior change in a product that already has a map. Occasion, promote, and distill are files `/sdd` opens, not extra skills. This page is the catalog. Product maps do not bullet them.
+This guidebook ships two addressable skills: [`sdd`](../.cursor/skills/sdd/SKILL.md) (`/sdd`) for authoring, [`sdd-eng`](../.cursor/skills/sdd-eng/SKILL.md) (`/sdd-eng`) for a behavior change in a product that already has a map. Occasion, promote, and distill are files `/sdd` opens, not extra skills. Install them from the catalogs ([`.cursor-plugin/marketplace.json`](../.cursor-plugin/marketplace.json), [`.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json)); the plugin root is `.cursor`, not this handbook. This page is the catalog. Product maps do not bullet them.
 
 **When:** you keep pasting the same checklist, or a map section became a procedure that is only sometimes needed (debug this service, run this eval, ship this package).
 

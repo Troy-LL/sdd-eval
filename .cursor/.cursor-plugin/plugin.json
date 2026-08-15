@@ -1,0 +1,12 @@
+{
+  "name": "sdd",
+  "version": "1.0.0",
+  "description": "Troy's SDD: /sdd authors product docs; /sdd-eng walks a behavior change against the product map.",
+  "author": {
+    "name": "Troy"
+  },
+  "homepage": "https://github.com/Troy-LL/troysdd",
+  "repository": "https://github.com/Troy-LL/troysdd",
+  "keywords": ["sdd", "spec", "agents", "skills"],
+  "skills": "./skills"
+}

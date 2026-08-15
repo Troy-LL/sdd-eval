@@ -1,0 +1,17 @@
+{
+  "name": "troysdd",
+  "owner": {
+    "name": "Troy"
+  },
+  "metadata": {
+    "description": "Troy's SDD: author product docs with /sdd; change code with /sdd-eng. Import the plugin, not this guidebook.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "sdd",
+      "source": "./.cursor",
+      "description": "Author product docs with /sdd; walk a behavior change with /sdd-eng. Load stays on the product AGENTS.md."
+    }
+  ]
+}

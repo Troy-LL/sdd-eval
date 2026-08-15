@@ -1,8 +1,21 @@
 # Troy's SDD
 
-A guidebook for the two files next to `docs/` and the few files inside it. Humans skim it. Agents open one file per turn.
+A skill plugin you install into a product. Not a framework. Not a folder tree to copy.
 
-Do not copy this repo into a product. Put the files the product actually needs. This page is how to choose them.
+`/sdd` authors the few product files that job earned. `/sdd-eng` walks a behavior change against the product map. Load stays on that product’s `AGENTS.md`.
+
+The docs in this repo are the source of truth behind those skills. They are research-backed — primary pages in [`references/sources.md`](references/sources.md). Do not paste this handbook into a product.
+
+## Install
+
+**Cursor:** import `https://github.com/Troy-LL/troysdd` as a Team Marketplace ([`.cursor-plugin/marketplace.json`](.cursor-plugin/marketplace.json)), then install plugin `sdd`.
+
+**Claude Code:**
+
+```
+/plugin marketplace add Troy-LL/troysdd
+/plugin install sdd@troysdd
+```
 
 ## Who it is for
 
@@ -16,7 +29,9 @@ Anyone shipping software that a coding agent will touch. Scratch scripts, librar
 
 Intent before code stays. A per-feature `spec.md` / `plan.md` / `tasks.md` tree does not.
 
-## Apply it
+## What a product still creates
+
+The skills do not generate folders. They refuse a file whose occasion is false.
 
 | If the repo is… | Create |
 | --- | --- |
@@ -26,9 +41,9 @@ Intent before code stays. A per-feature `spec.md` / `plan.md` / `tasks.md` tree 
 | A product with a model and a scored probe | Add `docs/eval.md` |
 | A decision that would look right if violated | Add one `docs/decisions/NNN-title.md` and map it |
 
-What belongs in each file: [`docs/files.md`](docs/files.md). How authoring and load fit together: [`docs/architecture.md`](docs/architecture.md). Primary sources: [`references/sources.md`](references/sources.md).
+What belongs in each file: [`docs/files.md`](docs/files.md). How authoring and load fit together: [`docs/architecture.md`](docs/architecture.md).
 
-Agents **author** through [`/sdd`](.cursor/skills/sdd/SKILL.md). Point it at a PRD or idea dump to distill — it writes only the files that job earned, then deletes the dump (or parks it in `scratch/`). Agents **change code** through [`/sdd-eng`](.cursor/skills/sdd-eng/SKILL.md). Load stays on the product `AGENTS.md`.
+Agents **author** through [`/sdd`](.cursor/skills/sdd/SKILL.md). Point it at a PRD or idea dump to distill — it writes only the files that job earned, then deletes the dump (or parks it in `scratch/`). Agents **change code** through [`/sdd-eng`](.cursor/skills/sdd-eng/SKILL.md).
 
 ## Run this repo
 
