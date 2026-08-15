@@ -6,10 +6,11 @@ description: >-
   park thinking in scratch and promote residue. Use when adding product docs, an
   agent map, a Spec Kit / OpenSpec / Kiro tree, a markdown twin of OpenAPI or
   schema, dual-writing CLAUDE.md, an RFC, spike, design week, a Proposed line in
-  architecture, or a jumbled PRD / idea / spec file to distill.
+  architecture, or a jumbled PRD / idea / spec file to distill. Do not use when
+  implementing a feature, fix, or refactor — that is `/sdd-eng`.
 ---
 
-One skill. `/sdd`. Classify, then Read the matching file. Load stays on the product `AGENTS.md`.
+Authoring. `/sdd`. Classify, then Read the matching file. Load stays on the product `AGENTS.md`. A behavior change is `/sdd-eng`.
 
 If this workspace is the guidebook, Read `docs/files.md` only when the disclosed file is not enough.
 

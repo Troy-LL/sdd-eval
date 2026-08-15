@@ -77,6 +77,7 @@ test("this repo's own map and docs have no dangling pointers", async () => {
       "docs/decisions/001-intent-in-the-file-that-changed.md",
       "references/sources.md",
       ".cursor/skills/sdd/SKILL.md",
+      ".cursor/skills/sdd-eng/SKILL.md",
       ".cursor/skills/sdd/occasion.md",
       ".cursor/skills/sdd/promote.md",
       ".cursor/skills/sdd/distill.md",

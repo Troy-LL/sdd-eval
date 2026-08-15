@@ -28,7 +28,7 @@ Intent before code stays. A per-feature `spec.md` / `plan.md` / `tasks.md` tree 
 
 What belongs in each file: [`docs/files.md`](docs/files.md). How authoring and load fit together: [`docs/architecture.md`](docs/architecture.md). Primary sources: [`references/sources.md`](references/sources.md).
 
-Agents run the ladder through [`/sdd`](.cursor/skills/sdd/SKILL.md). Point it at a PRD or idea dump to distill — it writes only the files that job earned, then deletes the dump (or parks it in `scratch/`). Load stays on the product `AGENTS.md`.
+Agents **author** through [`/sdd`](.cursor/skills/sdd/SKILL.md). Point it at a PRD or idea dump to distill — it writes only the files that job earned, then deletes the dump (or parks it in `scratch/`). Agents **change code** through [`/sdd-eng`](.cursor/skills/sdd-eng/SKILL.md). Load stays on the product `AGENTS.md`.
 
 ## Run this repo
 
